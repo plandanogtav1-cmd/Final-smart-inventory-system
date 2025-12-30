@@ -1,4 +1,4 @@
-import { Bell, Search, User, X, Wifi, WifiOff, Menu } from 'lucide-react';
+import { Bell, Search, User, X, Wifi, WifiOff, Menu, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useOffline } from '../../contexts/OfflineContext';
 import { useState, useEffect } from 'react';
@@ -25,13 +25,26 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user } = useAuth();
-  const { isOnline, pendingActions } = useOffline();
+  const { isOnline, pendingActions, syncPendingActions } = useOffline();
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleManualSync = async () => {
+    if (!isOnline || pendingActions.length === 0 || syncing) return;
+    
+    setSyncing(true);
+    try {
+      await syncPendingActions();
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+    }
+    setSyncing(false);
+  };
 
   useEffect(() => {
     loadUnreadAlerts();
@@ -202,7 +215,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2 lg:gap-4 lg:ml-6">
-          {/* Offline Indicator - Simplified on mobile */}
+          {/* Offline Indicator */}
           <div className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 rounded-lg text-xs font-medium ${
             isOnline 
               ? 'bg-gray-800 text-gray-400' 
@@ -215,9 +228,21 @@ export default function Header({ onMenuClick }: HeaderProps) {
             )}
             <span className="hidden sm:inline">{isOnline ? 'Online' : 'Offline'}</span>
             {pendingActions.length > 0 && (
-              <span className="bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-xs">
-                {pendingActions.length}
-              </span>
+              <>
+                <span className="bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-xs">
+                  {pendingActions.length}
+                </span>
+                {isOnline && (
+                  <button
+                    onClick={handleManualSync}
+                    disabled={syncing}
+                    className="ml-2 p-1.5 hover:bg-white/10 rounded transition-colors min-w-[24px] min-h-[24px] flex items-center justify-center"
+                    title="Sync pending actions"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
+              </>
             )}
           </div>
 
