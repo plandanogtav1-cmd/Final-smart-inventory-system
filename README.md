@@ -1,3 +1,7 @@
+# Smart Inventory Management System
+**Built by Lester Plandano**
+AI-Driven Inventory Management with Real-time Analytics, Automated Restocking, and Intelligent Chatbot.
+
 # AI-Driven Smart Inventory Management System
 
 A modern, full-stack inventory management system with real-time analytics, AI-powered forecasting, automated reporting, and an intelligent chatbot connected to your business data.
