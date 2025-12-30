@@ -35,11 +35,14 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [syncing, setSyncing] = useState(false);
 
   const handleManualSync = async () => {
+    console.log('Sync button clicked!', { isOnline, pendingActions: pendingActions.length, syncing });
     if (!isOnline || pendingActions.length === 0 || syncing) return;
     
     setSyncing(true);
     try {
+      console.log('Starting sync...');
       await syncPendingActions();
+      console.log('Sync completed!');
     } catch (error) {
       console.error('Manual sync failed:', error);
     }
@@ -219,13 +222,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
           <button
             onClick={pendingActions.length > 0 && isOnline ? handleManualSync : undefined}
             disabled={syncing || pendingActions.length === 0 || !isOnline}
-            className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border-2 ${
               isOnline 
-                ? 'bg-gray-800 text-gray-400' 
-                : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                ? 'bg-gray-800 text-gray-400 border-gray-700' 
+                : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
             } ${
               pendingActions.length > 0 && isOnline 
-                ? 'hover:bg-opacity-80 cursor-pointer' 
+                ? 'hover:bg-blue-600 hover:text-white cursor-pointer border-blue-500' 
                 : 'cursor-default'
             }`}
             title={pendingActions.length > 0 && isOnline ? 'Click to sync pending actions' : undefined}
