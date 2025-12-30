@@ -216,11 +216,20 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
         <div className="flex items-center gap-2 lg:gap-4 lg:ml-6">
           {/* Offline Indicator */}
-          <div className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 rounded-lg text-xs font-medium ${
-            isOnline 
-              ? 'bg-gray-800 text-gray-400' 
-              : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-          }`}>
+          <button
+            onClick={pendingActions.length > 0 && isOnline ? handleManualSync : undefined}
+            disabled={syncing || pendingActions.length === 0 || !isOnline}
+            className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              isOnline 
+                ? 'bg-gray-800 text-gray-400' 
+                : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+            } ${
+              pendingActions.length > 0 && isOnline 
+                ? 'hover:bg-opacity-80 cursor-pointer' 
+                : 'cursor-default'
+            }`}
+            title={pendingActions.length > 0 && isOnline ? 'Click to sync pending actions' : undefined}
+          >
             {isOnline ? (
               <Wifi className="w-3.5 h-3.5" />
             ) : (
@@ -232,19 +241,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 <span className="bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-xs">
                   {pendingActions.length}
                 </span>
-                {isOnline && (
-                  <button
-                    onClick={handleManualSync}
-                    disabled={syncing}
-                    className="ml-2 p-1.5 hover:bg-white/10 rounded transition-colors min-w-[24px] min-h-[24px] flex items-center justify-center"
-                    title="Sync pending actions"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
-                  </button>
-                )}
+                {syncing && <RefreshCw className="w-2.5 h-2.5 animate-spin ml-1" />}
               </>
             )}
-          </div>
+          </button>
 
           {/* Notifications */}
           <div className="relative">
