@@ -542,29 +542,30 @@ export default function AutomatedRestocking() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">Automated Restocking</h1>
           <p className="text-gray-400">Manage inventory restocking by category with bulk email orders</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button
             onClick={sendAllCategoryEmails}
             disabled={loading || categoryGroups.length === 0}
-            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition-all disabled:opacity-50 flex items-center gap-2"
+            className="px-4 lg:px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm lg:text-base"
           >
             <Send className="w-4 h-4" />
-            Send All Restock Orders
+            <span className="hidden sm:inline">Send All Restock Orders</span>
+            <span className="sm:hidden">Send All Orders</span>
           </button>
-          <div className="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
+          <div className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-gray-800 rounded-lg border border-gray-700">
             <AlertTriangle className="w-4 h-4 text-orange-400" />
-            <span className="text-white font-medium">{categoryGroups.reduce((sum, group) => sum + group.products.length, 0)} items need restocking</span>
+            <span className="text-white font-medium text-sm lg:text-base">{categoryGroups.reduce((sum, group) => sum + group.products.length, 0)} items need restocking</span>
           </div>
           <button
             onClick={saveAllPreferences}
             disabled={loading}
             title="Save Preferences"
-            className="p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-lg transition-all disabled:opacity-50"
+            className="p-2.5 text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-lg transition-all disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
           </button>
@@ -575,26 +576,26 @@ export default function AutomatedRestocking() {
         <div className="grid gap-6">
           {categoryGroups.map((group) => (
             <div key={group.category} className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-6 border-b border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-red-500/20 p-3 rounded-xl">
-                      <Package className="w-6 h-6 text-red-400" />
+              <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-4 lg:p-6 border-b border-gray-700">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 lg:gap-4">
+                    <div className="bg-red-500/20 p-2 lg:p-3 rounded-xl">
+                      <Package className="w-5 h-5 lg:w-6 lg:h-6 text-red-400" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-white">{group.category}</h3>
-                      <p className="text-gray-400">{group.products.length} products • Total needed: {group.products.reduce((sum, p) => sum + (p.min_stock_threshold - p.current_stock + 5), 0)} units</p>
+                      <h3 className="text-lg lg:text-xl font-semibold text-white">{group.category}</h3>
+                      <p className="text-gray-400 text-sm lg:text-base">{group.products.length} products • Total needed: {group.products.reduce((sum, p) => sum + (p.min_stock_threshold - p.current_stock + 5), 0)} units</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <span className="text-sm text-gray-300 font-medium">Supplier:</span>
                       <div className="relative">
                         <select
                           value={group.selectedSupplier}
                           onChange={(e) => updateSupplierForCategory(group.category, e.target.value)}
-                          className="bg-gray-800 border border-gray-600 text-white px-4 py-2 pr-10 rounded-xl appearance-none focus:outline-none focus:border-blue-500 min-w-[200px]"
+                          className="bg-gray-800 border border-gray-600 text-white px-3 lg:px-4 py-2 pr-8 lg:pr-10 rounded-xl appearance-none focus:outline-none focus:border-blue-500 w-full sm:min-w-[180px] lg:min-w-[200px] text-sm lg:text-base"
                         >
                           <option value="">Select Supplier</option>
                           {suppliers.map((supplier) => (
@@ -603,28 +604,29 @@ export default function AutomatedRestocking() {
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
+                        <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 lg:right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
                     
                     <button
                       onClick={() => sendCategoryRestockEmail(group)}
                       disabled={loading || !group.selectedSupplier}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      className="flex items-center justify-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg text-sm lg:text-base"
                     >
                       <Send className="w-4 h-4" />
-                      Send Bulk Order
+                      <span className="hidden sm:inline">Send Bulk Order</span>
+                      <span className="sm:hidden">Send Order</span>
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="p-4 lg:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
                   {group.products.map((product) => (
-                    <div key={product.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 hover:bg-gray-800/70 transition-colors">
-                      <h4 className="text-white font-medium mb-3 truncate">{product.name}</h4>
-                      <div className="space-y-2 text-sm">
+                    <div key={product.id} className="bg-gray-800/50 border border-gray-700 rounded-xl p-3 lg:p-4 hover:bg-gray-800/70 transition-colors">
+                      <h4 className="text-white font-medium mb-2 lg:mb-3 truncate text-sm lg:text-base">{product.name}</h4>
+                      <div className="space-y-1.5 lg:space-y-2 text-xs lg:text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-400">Current:</span>
                           <span className="text-red-400 font-medium">{product.current_stock}</span>
@@ -640,7 +642,7 @@ export default function AutomatedRestocking() {
                             min="1"
                             value={group.customQuantities[product.id] || (product.min_stock_threshold - product.current_stock + 5)}
                             onChange={(e) => updateQuantityForProduct(group.category, product.id, parseInt(e.target.value) || 1)}
-                            className="w-16 px-2 py-1 bg-gray-700 border border-gray-600 text-white text-xs rounded focus:outline-none focus:border-blue-500"
+                            className="w-12 lg:w-16 px-1.5 lg:px-2 py-1 bg-gray-700 border border-gray-600 text-white text-xs rounded focus:outline-none focus:border-blue-500"
                           />
                         </div>
                       </div>
@@ -660,21 +662,21 @@ export default function AutomatedRestocking() {
       )}
 
       <div className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-6 border-b border-gray-700">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-900 p-4 lg:p-6 border-b border-gray-700">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-500/20 p-3 rounded-xl">
-                <Truck className="w-6 h-6 text-blue-400" />
+              <div className="bg-blue-500/20 p-2 lg:p-3 rounded-xl">
+                <Truck className="w-5 h-5 lg:w-6 lg:h-6 text-blue-400" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-white">Active Restock Orders</h3>
-                <p className="text-gray-400">{restockOrders.length} orders in progress</p>
+                <h3 className="text-lg lg:text-xl font-semibold text-white">Active Restock Orders</h3>
+                <p className="text-gray-400 text-sm lg:text-base">{restockOrders.length} orders in progress</p>
               </div>
             </div>
             <button
               onClick={clearAllOrders}
               disabled={loading || restockOrders.length === 0}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all disabled:opacity-50"
+              className="px-3 lg:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 text-sm lg:text-base"
             >
               Clear All Orders
             </button>
@@ -682,7 +684,7 @@ export default function AutomatedRestocking() {
         </div>
 
         {restockOrders.length > 0 ? (
-          <div className="space-y-6 p-6">
+          <div className="space-y-4 lg:space-y-6 p-4 lg:p-6">
             {Object.entries(
               restockOrders.reduce((acc, order) => {
                 const supplierName = order.supplier?.name || 'Unknown Supplier';
@@ -694,26 +696,26 @@ export default function AutomatedRestocking() {
               }, {} as Record<string, RestockOrder[]>)
             ).map(([supplierName, orders]) => (
               <div key={supplierName} className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
-                <div className="bg-gray-800 p-4 border-b border-gray-700">
-                  <div className="flex items-center justify-between">
+                <div className="bg-gray-800 p-3 lg:p-4 border-b border-gray-700">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <h4 className="text-white font-semibold">{supplierName}</h4>
-                      <p className="text-gray-400 text-sm">{orders.length} orders • Total: {orders.reduce((sum, o) => sum + o.quantity, 0)} units</p>
+                      <h4 className="text-white font-semibold text-sm lg:text-base">{supplierName}</h4>
+                      <p className="text-gray-400 text-xs lg:text-sm">{orders.length} orders • Total: {orders.reduce((sum, o) => sum + o.quantity, 0)} units</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {orders.some(o => o.status === 'order_sent') && (
                         <>
                           <button
                             onClick={() => updateSupplierOrdersStatus(supplierName, 'in_transit')}
                             disabled={loading}
-                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
+                            className="px-2 lg:px-3 py-1 lg:py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
                           >
                             All On Way
                           </button>
                           <button
                             onClick={() => updateSupplierOrdersStatus(supplierName, 'supplier_unavailable')}
                             disabled={loading}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
+                            className="px-2 lg:px-3 py-1 lg:py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
                           >
                             All Unavailable
                           </button>
@@ -723,15 +725,15 @@ export default function AutomatedRestocking() {
                   </div>
                 </div>
                 
-                <div className="grid gap-2 p-4">
+                <div className="grid gap-2 p-3 lg:p-4">
                   {orders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between bg-gray-700/50 p-3 rounded-lg">
-                      <div className="flex-1">
-                        <span className="text-white font-medium">{order.product?.name || 'Unknown Product'}</span>
-                        <span className="text-gray-400 ml-2">({order.quantity} units)</span>
+                    <div key={order.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-700/50 p-2 lg:p-3 rounded-lg gap-2 sm:gap-3">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white font-medium text-sm lg:text-base truncate block">{order.product?.name || 'Unknown Product'}</span>
+                        <span className="text-gray-400 text-xs lg:text-sm">({order.quantity} units)</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)} whitespace-nowrap`}>
                           {getStatusIcon(order.status)}
                           {order.status === 'supplier_unavailable' ? 'cancelled' : 
                            order.status === 'confirmed' ? 'delivered' : 
@@ -756,8 +758,8 @@ export default function AutomatedRestocking() {
                           </div>
                         )}
                         {order.status === 'in_transit' && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-yellow-400 text-xs font-medium">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <span className="text-yellow-400 text-xs font-medium text-center sm:text-left">
                               {(() => {
                                 const daysLeft = getDaysRemaining(order.expected_delivery_date);
                                 if (daysLeft > 1) return `Arriving in ${daysLeft} days`;
@@ -766,20 +768,22 @@ export default function AutomatedRestocking() {
                                 return 'Delivery overdue';
                               })()} 
                             </span>
-                            <button
-                              onClick={() => markAsDelivered(order.id)}
-                              disabled={loading}
-                              className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors disabled:opacity-50"
-                            >
-                              Mark Received
-                            </button>
-                            <button
-                              onClick={() => updateOrderStatus(order.id, 'supplier_unavailable')}
-                              disabled={loading}
-                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors disabled:opacity-50"
-                            >
-                              Cancel
-                            </button>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => markAsDelivered(order.id)}
+                                disabled={loading}
+                                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors disabled:opacity-50"
+                              >
+                                Mark Received
+                              </button>
+                              <button
+                                onClick={() => updateOrderStatus(order.id, 'supplier_unavailable')}
+                                disabled={loading}
+                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
