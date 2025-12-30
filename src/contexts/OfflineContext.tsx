@@ -60,35 +60,103 @@ export const OfflineProvider = ({ children }: Props) => {
   const syncPendingActions = async () => {
     if (!isOnline || pendingActions.length === 0) return;
 
+    console.log('Syncing pending actions:', pendingActions);
+    
     try {
+      const successfulActions = [];
+      
       for (const action of pendingActions) {
-        switch (action.type) {
-          case 'sale':
-            await supabase.from('sales').insert([action.data]);
-            // Update product stock
-            await supabase
-              .from('products')
-              .update({ current_stock: action.data.new_stock })
-              .eq('id', action.data.product_id);
-            break;
-          case 'product_update':
-            await supabase
-              .from('products')
-              .update(action.data)
-              .eq('id', action.id);
-            break;
-          case 'customer_add':
-            await supabase.from('customers').insert([action.data]);
-            break;
+        try {
+          switch (action.type) {
+            case 'sale':
+              console.log('Syncing sale:', action.data);
+              const { error: saleError } = await supabase.from('sales').insert([{
+                product_id: action.data.product_id,
+                customer_id: action.data.customer_id,
+                quantity: action.data.quantity,
+                unit_price: action.data.unit_price,
+                total_amount: action.data.total_amount,
+                sale_date: action.data.created_at,
+                payment_method: action.data.payment_method,
+                status: action.data.status
+              }]);
+              
+              if (saleError) {
+                console.error('Sale sync error:', saleError);
+                continue;
+              }
+              
+              // Update product stock
+              const { error: stockError } = await supabase
+                .from('products')
+                .update({ 
+                  current_stock: action.data.new_stock,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', action.data.product_id);
+              
+              if (stockError) {
+                console.error('Stock update error:', stockError);
+              }
+              
+              successfulActions.push(action);
+              break;
+              
+            case 'customer_update':
+              console.log('Syncing customer update:', action.data);
+              const { data: currentCustomer } = await supabase
+                .from('customers')
+                .select('total_purchases')
+                .eq('id', action.data.customer_id)
+                .single();
+              
+              if (currentCustomer) {
+                await supabase
+                  .from('customers')
+                  .update({ 
+                    total_purchases: currentCustomer.total_purchases + action.data.amount_to_add
+                  })
+                  .eq('id', action.data.customer_id);
+              }
+              
+              successfulActions.push(action);
+              break;
+              
+            case 'product_update':
+              await supabase
+                .from('products')
+                .update(action.data)
+                .eq('id', action.id);
+              successfulActions.push(action);
+              break;
+              
+            case 'customer_add':
+              await supabase.from('customers').insert([action.data]);
+              successfulActions.push(action);
+              break;
+          }
+        } catch (actionError) {
+          console.error(`Failed to sync action ${action.type}:`, actionError);
         }
       }
       
-      // Clear pending actions after successful sync
-      setPendingActions([]);
-      localStorage.removeItem('pendingActions');
+      // Remove only successfully synced actions
+      if (successfulActions.length > 0) {
+        const remainingActions = pendingActions.filter(action => 
+          !successfulActions.some(successful => 
+            successful.timestamp === action.timestamp
+          )
+        );
+        
+        setPendingActions(remainingActions);
+        localStorage.setItem('pendingActions', JSON.stringify(remainingActions));
+        
+        console.log(`Synced ${successfulActions.length} actions, ${remainingActions.length} remaining`);
+        
+        // Refresh cached data after successful sync
+        await refreshLocalCache();
+      }
       
-      // Refresh cached data
-      await refreshLocalCache();
     } catch (error) {
       console.error('Sync failed:', error);
     }

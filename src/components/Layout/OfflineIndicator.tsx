@@ -1,8 +1,22 @@
 import { useOffline } from '../../contexts/OfflineContext';
-import { Wifi, WifiOff, Clock, CheckCircle } from 'lucide-react';
+import { Wifi, WifiOff, Clock, CheckCircle, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
 
 export default function OfflineIndicator() {
   const { isOnline, pendingActions, syncPendingActions } = useOffline();
+  const [syncing, setSyncing] = useState(false);
+
+  const handleManualSync = async () => {
+    if (!isOnline || pendingActions.length === 0 || syncing) return;
+    
+    setSyncing(true);
+    try {
+      await syncPendingActions();
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+    }
+    setSyncing(false);
+  };
 
   // Always show the indicator for visibility
   return (
@@ -29,6 +43,17 @@ export default function OfflineIndicator() {
               <Clock className="w-2.5 h-2.5" />
               <span>{pendingActions.length}</span>
             </div>
+            
+            {isOnline && (
+              <button
+                onClick={handleManualSync}
+                disabled={syncing}
+                className="ml-1 p-0.5 hover:bg-white/10 rounded transition-colors"
+                title="Sync pending actions"
+              >
+                <RefreshCw className={`w-2.5 h-2.5 ${syncing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
           </>
         )}
       </div>
