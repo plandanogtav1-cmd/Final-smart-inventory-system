@@ -43,19 +43,19 @@ export default function OfflineIndicator() {
               <Clock className="w-2.5 h-2.5" />
               <span>{pendingActions.length}</span>
             </div>
-            
-            {isOnline && (
-              <button
-                onClick={handleManualSync}
-                disabled={syncing}
-                className="ml-1 p-0.5 hover:bg-white/10 rounded transition-colors"
-                title="Sync pending actions"
-              >
-                <RefreshCw className={`w-2.5 h-2.5 ${syncing ? 'animate-spin' : ''}`} />
-              </button>
-            )}
           </>
         )}
+        
+        {isOnline && pendingActions.length > 0 && (
+          <button
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="ml-1 p-1 hover:bg-white/10 rounded transition-colors min-w-[20px] min-h-[20px] flex items-center justify-center"
+            title="Sync pending actions"
+          >
+            <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+          </button>
+        )
       </div>
     </div>
   );
