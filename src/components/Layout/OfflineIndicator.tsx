@@ -21,11 +21,20 @@ export default function OfflineIndicator() {
   // Always show the indicator for visibility
   return (
     <div className="fixed top-20 right-4 z-40">
-      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-lg border text-xs ${
-        isOnline 
-          ? 'bg-green-900 border-green-700 text-green-100' 
-          : 'bg-orange-900 border-orange-700 text-orange-100'
-      }`}>
+      <button
+        onClick={pendingActions.length > 0 && isOnline ? handleManualSync : undefined}
+        disabled={syncing || pendingActions.length === 0 || !isOnline}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-lg border text-xs transition-all ${
+          isOnline 
+            ? 'bg-green-900 border-green-700 text-green-100' 
+            : 'bg-orange-900 border-orange-700 text-orange-100'
+        } ${
+          pendingActions.length > 0 && isOnline 
+            ? 'hover:bg-opacity-80 cursor-pointer' 
+            : 'cursor-default'
+        }`}
+        title={pendingActions.length > 0 && isOnline ? 'Click to sync pending actions' : undefined}
+      >
         {isOnline ? (
           <Wifi className="w-3 h-3" />
         ) : (
@@ -42,21 +51,11 @@ export default function OfflineIndicator() {
             <div className="flex items-center gap-1">
               <Clock className="w-2.5 h-2.5" />
               <span>{pendingActions.length}</span>
+              {syncing && <RefreshCw className="w-2.5 h-2.5 animate-spin ml-1" />}
             </div>
           </>
         )}
-        
-        {isOnline && pendingActions.length > 0 && (
-          <button
-            onClick={handleManualSync}
-            disabled={syncing}
-            className="ml-1 p-1 hover:bg-white/10 rounded transition-colors min-w-[20px] min-h-[20px] flex items-center justify-center"
-            title="Sync pending actions"
-          >
-            <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
-          </button>
-        )
-      </div>
+      </button>
     </div>
   );
 }
