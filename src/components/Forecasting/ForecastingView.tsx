@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { ExternalDataService } from '../../lib/externalDataService';
 import { TrendingUp, AlertCircle, CheckCircle, Brain, BarChart3, DollarSign, Calendar, Target } from 'lucide-react';
 import SalesPatternChart from './SalesPatternChart';
 import StatCard from './StatCard';
@@ -87,11 +88,18 @@ export default function ForecastingView() {
   const generateForecasts = async () => {
     setLoading(true);
     try {
+      // Get external data for today
+      const today = new Date().toISOString().split('T')[0];
+      await ExternalDataService.fetchWeatherData(today);
+      await ExternalDataService.fetchHolidayData(today);
+      await ExternalDataService.fetchEconomicData(today);
+      
+      const externalFactors = await ExternalDataService.getExternalFactors(today);
+      
       const { data: products } = await supabase
         .from('products')
         .select('id, name, category')
-        .eq('is_active', true)
-        .limit(5);
+        .eq('is_active', true);
 
       if (products) {
         const { data: sales } = await supabase
@@ -133,7 +141,10 @@ export default function ForecastingView() {
           const weekendBoost = (dayPatterns[0] + dayPatterns[6]) / 2 > avgDemand ? 1.2 : 1.0;
           const holidayBoost = holidaySales.length > 0 && holidaySales.reduce((sum, q) => sum + q, 0) / holidaySales.length > avgDemand ? 1.3 : 1.0;
 
-          const predictedDemand = Math.round(avgDemand * seasonalMultiplier * weekendBoost * (forecastPeriod / 30) * (1 + (Math.random() * 0.2 - 0.1)));
+          const basePrediction = Math.round(avgDemand * seasonalMultiplier * weekendBoost * (forecastPeriod / 30) * (1 + (Math.random() * 0.2 - 0.1)));
+          
+          // Apply external factors
+          const predictedDemand = ExternalDataService.applyExternalFactors(basePrediction, product.id, externalFactors);
 
           // Vary forecast dates based on selected period and product category
           const forecastDate = new Date();
@@ -165,10 +176,17 @@ export default function ForecastingView() {
           forecastDate.setDate(forecastDate.getDate() + daysAhead);
 
           // Generate smart insights with period-aware recommendations
-          const insights = generateSmartInsights(product, dayPatterns, holidaySales, avgDemand, predictedDemand, currentMonth, forecastPeriod);
+          const insights = generateSmartInsights(product, dayPatterns, holidaySales, avgDemand, predictedDemand, currentMonth, forecastPeriod, externalFactors);
 
-          const recommendation = `${insights.mainRecommendation} ${insights.contextualFactors}`;
+          const recommendation = `${insights.mainRecommendation} ${insights.contextualFactors}`.trim();
           const reasoning = insights.reasoning;
+
+          console.log('Generated forecast for', product.name, ':', {
+            recommendation,
+            hasExternalFactors: externalFactors.length > 0,
+            externalFactors: externalFactors.map(f => ({ type: f.data_type, data: f.data_json })),
+            reasoningPreview: reasoning.substring(0, 200)
+          });
 
           await supabase.from('forecasts').insert([{
             product_id: product.id,
@@ -182,10 +200,25 @@ export default function ForecastingView() {
               weekend_pattern: weekendBoost > 1.0,
               holiday_impact: holidayBoost > 1.0,
               seasonal_factor: seasonalMultiplier,
+              external_factors: externalFactors,
+              external_adjustment: ((predictedDemand / basePrediction - 1) * 100).toFixed(1) + '%',
               insights: insights,
               reasoning: reasoning,
               change_percent: insights.changePercent,
-              demand_change: insights.demandChange
+              demand_change: insights.demandChange,
+              // Add sales metrics
+              today_sales: productSales.filter(s => {
+                const saleDate = new Date(s.created_at).toDateString();
+                const today = new Date().toDateString();
+                return saleDate === today;
+              }).reduce((sum, s) => sum + s.quantity, 0),
+              monthly_sales: productSales.filter(s => {
+                const saleDate = new Date(s.created_at);
+                const monthStart = new Date();
+                monthStart.setDate(1);
+                monthStart.setHours(0, 0, 0, 0);
+                return saleDate >= monthStart;
+              }).reduce((sum, s) => sum + s.quantity, 0)
             },
             recommendation
           }]);
@@ -328,7 +361,7 @@ export default function ForecastingView() {
     return 1.0;
   };
 
-  const generateSmartInsights = (product: any, dayPatterns: number[], holidaySales: number[], avgDemand: number, predictedDemand: number, currentMonth: number, forecastPeriod: number) => {
+  const generateSmartInsights = (product: any, dayPatterns: number[], holidaySales: number[], avgDemand: number, predictedDemand: number, currentMonth: number, forecastPeriod: number, externalFactors: any[] = []) => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const bestDay = dayPatterns.indexOf(Math.max(...dayPatterns));
     const worstDay = dayPatterns.indexOf(Math.min(...dayPatterns));
@@ -432,6 +465,50 @@ export default function ForecastingView() {
       reasoningFactors.push(`Weekday sales are ${Math.round((weekdayAvg / weekendAvg - 1) * 100)}% stronger, indicating commercial or fleet customer preference for business day purchases`);
     }
     
+    // Add external factors to reasoning
+    if (externalFactors.length > 0) {
+      const processedFactors = new Set(); // Track processed factors to avoid duplicates
+      
+      externalFactors.forEach(factor => {
+        if (factor.data_type === 'weather') {
+          const weatherKey = `weather_${factor.data_json.condition}_${factor.data_json.temperature}`;
+          if (!processedFactors.has(weatherKey)) {
+            if (factor.data_json.condition === 'hot' && product.category === 'Fluids') {
+              reasoningFactors.push(`Hot weather (${factor.data_json.temperature}°C) increases fluid replacement needs by 30% due to accelerated evaporation`);
+            } else if (factor.data_json.condition === 'rainy' && product.category === 'Tires') {
+              reasoningFactors.push(`Rainy conditions increase tire demand by 25% due to wet road safety concerns and faster wear`);
+            } else {
+              reasoningFactors.push(`Current weather: ${factor.data_json.condition} at ${factor.data_json.temperature}°C affects seasonal demand patterns`);
+            }
+            processedFactors.add(weatherKey);
+          }
+        } else if (factor.data_type === 'holiday') {
+          const holidayKey = `holiday_${factor.data_json.name}`;
+          if (!processedFactors.has(holidayKey)) {
+            if (factor.data_json.impact_level === 'high') {
+              reasoningFactors.push(`Major holiday (${factor.data_json.name}) typically boosts sales by 50% due to increased travel and vehicle preparation`);
+            } else {
+              reasoningFactors.push(`Holiday period (${factor.data_json.name}) may affect normal purchasing patterns`);
+            }
+            processedFactors.add(holidayKey);
+          }
+        } else if (factor.data_type === 'economic') {
+          const confidence = Math.round(factor.data_json.consumer_confidence);
+          const economicKey = `economic_${confidence}`;
+          if (!processedFactors.has(economicKey)) {
+            if (confidence > 80) {
+              reasoningFactors.push(`High consumer confidence (${confidence}%) indicates 10% increase in discretionary vehicle maintenance spending`);
+            } else if (confidence < 60) {
+              reasoningFactors.push(`Low consumer confidence (${confidence}%) suggests 10% reduction in non-essential vehicle purchases`);
+            } else {
+              reasoningFactors.push(`Moderate consumer confidence (${confidence}%) suggests stable spending patterns`);
+            }
+            processedFactors.add(economicKey);
+          }
+        }
+      });
+    }
+    
     // Forecast period specific insights with reasoning
     let periodInsight = '';
     if (forecastPeriod === 15) {
@@ -444,17 +521,33 @@ export default function ForecastingView() {
     
     contextualFactors = factors.length > 0 ? `💡 ${factors.join(', ')}.` : '';
     
-    // Combine all reasoning with proper context
-    const fullReasoning = [
-      reasoning,
-      ...reasoningFactors,
-      periodInsight
-    ].filter(r => r).join(' ');
+    // Combine all reasoning with proper context and formatting
+    const uniqueFactors = [...new Set(reasoningFactors)]; // Remove duplicates
+    
+    let formattedReasoning = `**${reasoning.split('.')[0]}.**\n\n`;
+    
+    if (uniqueFactors.length > 0) {
+      formattedReasoning += '**Key Factors:**\n';
+      uniqueFactors.forEach(factor => {
+        formattedReasoning += `• ${factor}\n`;
+      });
+      formattedReasoning += '\n';
+    }
+    
+    formattedReasoning += `**Planning:** ${periodInsight}`;
+    
+    console.log('Smart insights generated:', {
+      product: product.name,
+      mainRecommendation,
+      factorsCount: uniqueFactors.length,
+      externalFactorsCount: externalFactors.length,
+      reasoning: formattedReasoning.substring(0, 150) + '...'
+    });
     
     return { 
       mainRecommendation, 
       contextualFactors, 
-      reasoning: fullReasoning,
+      reasoning: formattedReasoning,
       bestDay: dayNames[bestDay], 
       worstDay: dayNames[worstDay],
       factors,
@@ -863,6 +956,18 @@ export default function ForecastingView() {
                     <span className="text-white font-bold">{forecast.predicted_demand} units</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-gray-400 text-xs">Today's Sales</span>
+                    <span className="text-blue-300 text-xs font-medium">
+                      {forecast.factors?.today_sales || 0} units
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400 text-xs">This Month</span>
+                    <span className="text-green-300 text-xs font-medium">
+                      {forecast.factors?.monthly_sales || 0} units
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-gray-400 text-xs">By Date</span>
                     <span className="text-gray-300 text-xs">
                       {new Date(forecast.forecast_date).toLocaleDateString()}
@@ -939,7 +1044,7 @@ export default function ForecastingView() {
                 {/* Always show reasoning section */}
                 <div className="border-t border-gray-700 pt-3">
                   <p className="text-gray-400 text-sm mb-2">🧠 AI Reasoning:</p>
-                  <p className="text-gray-300 text-sm leading-relaxed">
+                  <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
                     {selectedForecast.factors?.reasoning || 
                      selectedForecast.factors?.insights?.reasoning ||
                      (selectedForecast.recommendation.includes('📉') ? 
@@ -949,7 +1054,7 @@ export default function ForecastingView() {
                      selectedForecast.recommendation.includes('📊') ? 
                        'Moderate growth forecast: Data indicates a steady uptick in demand. While not dramatic, this consistent increase suggests growing market interest requiring gradual inventory adjustment to maintain optimal service levels.' :
                        'Stable demand forecast: Historical data shows consistent consumption patterns with minimal variation. Market equilibrium indicates reliable, predictable demand requiring no major inventory adjustments.')}
-                  </p>
+                  </div>
                 </div>
                 
                 {/* Always show demand metrics */}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { ExternalDataService } from '../../lib/externalDataService';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, Bot, User, Loader, RotateCcw, Lightbulb, TrendingUp, Package, AlertTriangle } from 'lucide-react';
 
@@ -744,45 +745,123 @@ export default function ChatbotView() {
   };
 
   const handleSalesForecast = async (): Promise<string> => {
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
     const { data: salesData } = await supabase
       .from('sales')
       .select('total_amount, quantity, created_at')
       .eq('status', 'completed')
-      .gte('created_at', threeMonthsAgo.toISOString());
+      .gte('created_at', sixMonthsAgo.toISOString());
 
-    if (!salesData || salesData.length === 0) {
-      return '📊 **Sales Forecast:**\n\nNot enough historical data for accurate forecasting.';
+    if (!salesData || salesData.length < 10) {
+      return '📊 **Sales Forecast:**\n\nNeed at least 10 sales records for accurate forecasting. Keep selling!';
     }
 
-    const monthlyData = salesData.reduce((acc, sale) => {
-      const month = new Date(sale.created_at).getMonth();
-      if (!acc[month]) acc[month] = { revenue: 0, units: 0, transactions: 0 };
-      acc[month].revenue += sale.total_amount;
-      acc[month].units += sale.quantity;
-      acc[month].transactions += 1;
-      return acc;
-    }, {} as Record<number, { revenue: number; units: number; transactions: number }>);
-
-    const months = Object.keys(monthlyData).length;
-    const avgRevenue = Object.values(monthlyData).reduce((sum, m) => sum + m.revenue, 0) / months;
-    const avgUnits = Object.values(monthlyData).reduce((sum, m) => sum + m.units, 0) / months;
-
-    const recentMonth = Math.max(...Object.keys(monthlyData).map(Number));
-    const oldestMonth = Math.min(...Object.keys(monthlyData).map(Number));
-    const growthRate = months > 1 ? 
-      ((monthlyData[recentMonth].revenue - monthlyData[oldestMonth].revenue) / monthlyData[oldestMonth].revenue) * 100 : 0;
-
-    const forecastRevenue = avgRevenue * (1 + (growthRate / 100));
-    const confidence = months >= 3 ? 'High' : 'Medium';
+    // Get external data for today
+    const today = new Date().toISOString().split('T')[0];
+    await ExternalDataService.fetchWeatherData(today);
+    await ExternalDataService.fetchHolidayData(today);
+    await ExternalDataService.fetchEconomicData(today);
     
-    return `📊 **Sales Forecast for Next Month:**\n\n` +
-           `💰 Predicted Revenue: ₱${forecastRevenue.toFixed(0).toLocaleString()}\n` +
-           `📈 Growth Rate: ${growthRate > 0 ? '+' : ''}${growthRate.toFixed(1)}%\n` +
-           `🎯 Confidence: ${confidence}\n\n` +
-           `💡 Based on ${months} months of data`;
+    const externalFactors = await ExternalDataService.getExternalFactors(today);
+
+    // Enhanced forecasting with multiple methods
+    const dailyData = salesData.reduce((acc, sale) => {
+      const date = new Date(sale.created_at).toISOString().split('T')[0];
+      if (!acc[date]) acc[date] = { revenue: 0, units: 0, transactions: 0 };
+      acc[date].revenue += sale.total_amount;
+      acc[date].units += sale.quantity;
+      acc[date].transactions += 1;
+      return acc;
+    }, {} as Record<string, { revenue: number; units: number; transactions: number }>);
+
+    const sortedDates = Object.keys(dailyData).sort();
+    const recentData = sortedDates.slice(-30); // Last 30 days
+    const olderData = sortedDates.slice(-60, -30); // Previous 30 days
+    
+    // Calculate trends
+    const recentAvg = recentData.reduce((sum, date) => sum + dailyData[date].revenue, 0) / recentData.length;
+    const olderAvg = olderData.length > 0 ? olderData.reduce((sum, date) => sum + dailyData[date].revenue, 0) / olderData.length : recentAvg;
+    
+    // Weighted moving average (recent data weighted more)
+    const weights = [0.4, 0.3, 0.2, 0.1];
+    const recentValues = recentData.slice(-4).map(date => dailyData[date].revenue);
+    const weightedAvg = recentValues.reduce((sum, val, i) => sum + (val * (weights[i] || 0.1)), 0);
+    
+    // Trend calculation
+    const trendRate = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) : 0;
+    
+    // Base forecast
+    const nextMonthDays = 30;
+    const baseforecast = weightedAvg > 0 ? weightedAvg : recentAvg;
+    const trendAdjusted = baseforecast * (1 + trendRate);
+    
+    // Apply external factors
+    const externalAdjusted = ExternalDataService.applyExternalFactors(trendAdjusted, 'general', externalFactors);
+    const monthlyForecast = externalAdjusted * nextMonthDays;
+    
+    // Confidence calculation
+    const dataPoints = salesData.length;
+    const timeSpan = sortedDates.length;
+    let confidence = 'Low';
+    let confidenceScore = 0;
+    
+    if (dataPoints >= 100 && timeSpan >= 60) {
+      confidence = 'Very High';
+      confidenceScore = 95;
+    } else if (dataPoints >= 50 && timeSpan >= 30) {
+      confidence = 'High';
+      confidenceScore = 85;
+    } else if (dataPoints >= 20 && timeSpan >= 14) {
+      confidence = 'Medium';
+      confidenceScore = 70;
+    } else {
+      confidence = 'Low';
+      confidenceScore = 50;
+    }
+    
+    // Risk assessment
+    const volatility = recentData.reduce((sum, date) => {
+      const diff = Math.abs(dailyData[date].revenue - recentAvg);
+      return sum + diff;
+    }, 0) / recentData.length;
+    
+    const riskLevel = volatility > recentAvg * 0.5 ? 'High' : volatility > recentAvg * 0.3 ? 'Medium' : 'Low';
+    
+    // External factors summary
+    let externalSummary = '';
+    if (externalFactors.length > 0) {
+      externalSummary = '\n\n🌍 **External Factors Considered:**\n';
+      externalFactors.forEach(factor => {
+        if (factor.data_type === 'weather') {
+          externalSummary += `• Weather: ${factor.data_json.condition}, ${factor.data_json.temperature}°C\n`;
+        } else if (factor.data_type === 'holiday') {
+          externalSummary += `• Holiday: ${factor.data_json.name} (${factor.data_json.impact_level} impact)\n`;
+        } else if (factor.data_type === 'economic') {
+          externalSummary += `• Economic: ${factor.data_json.consumer_confidence}% confidence\n`;
+        }
+      });
+    }
+    
+    return `📊 **Advanced Sales Forecast for Next Month:**\n\n` +
+           `💰 **Predicted Revenue:** ₱${monthlyForecast.toFixed(0).toLocaleString()}\n` +
+           `📈 **Growth Trend:** ${trendRate > 0 ? '+' : ''}${(trendRate * 100).toFixed(1)}%\n` +
+           `🎯 **Confidence Level:** ${confidence} (${confidenceScore}%)\n` +
+           `⚠️ **Risk Level:** ${riskLevel} volatility\n` +
+           `🔄 **External Adjustment:** ${((externalAdjusted / trendAdjusted - 1) * 100).toFixed(1)}%\n\n` +
+           `📋 **Analysis Details:**\n` +
+           `• Based on ${dataPoints} transactions over ${timeSpan} days\n` +
+           `• Recent 30-day average: ₱${recentAvg.toFixed(0).toLocaleString()}/day\n` +
+           `• Weighted forecast: ₱${trendAdjusted.toFixed(0).toLocaleString()}/day\n` +
+           `• External-adjusted: ₱${externalAdjusted.toFixed(0).toLocaleString()}/day\n` +
+           externalSummary +
+           `\n💡 **AI Recommendations:**\n` +
+           `${trendRate > 0.1 ? '• Strong growth trend - consider increasing inventory' : 
+             trendRate < -0.1 ? '• Declining trend - focus on marketing and customer retention' : 
+             '• Stable performance - maintain current strategy'}\n` +
+           `${riskLevel === 'High' ? '• High volatility detected - monitor daily performance closely' : 
+             '• Consistent performance - good predictability for planning'}`;
   };
 
   const handleOrderRecommendations = async (): Promise<string> => {

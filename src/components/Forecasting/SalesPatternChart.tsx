@@ -18,6 +18,8 @@ export default function SalesPatternChart({ productId, productName }: Props) {
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [weeklyPattern, setWeeklyPattern] = useState<number[]>([]);
   const [monthlyPattern, setMonthlyPattern] = useState<number[]>([]);
+  const [weeklyTotals, setWeeklyTotals] = useState<number[]>([]);
+  const [monthlyTotals, setMonthlyTotals] = useState<number[]>([]);
 
   useEffect(() => {
     loadSalesData();
@@ -59,31 +61,40 @@ export default function SalesPatternChart({ productId, productName }: Props) {
   };
 
   const calculatePatterns = (data: SalesData[]) => {
-    // If we have limited data, create a realistic weekly distribution
-    const totalSales = data.reduce((sum, sale) => sum + sale.quantity, 0);
+    // Calculate actual sales by day of week
+    const weeklyTotals = Array(7).fill(0);
+    const weeklyCounts = Array(7).fill(0);
     
-    if (data.length > 0) {
-      // Create realistic weekly pattern with variation
-      const weeklyMultipliers = [0.9, 0.7, 0.8, 0.9, 1.1, 1.3, 1.2]; // Sun-Sat
-      const totalMultiplier = weeklyMultipliers.reduce((sum, m) => sum + m, 0);
-      
-      const weeklyAvg = weeklyMultipliers.map(multiplier => 
-        (totalSales * multiplier) / (totalMultiplier * data.length)
-      );
-      setWeeklyPattern(weeklyAvg);
+    data.forEach(sale => {
+      weeklyTotals[sale.dayOfWeek] += sale.quantity;
+      weeklyCounts[sale.dayOfWeek]++;
+    });
+    
+    const weeklyAvg = weeklyTotals.map((total, index) => 
+      weeklyCounts[index] > 0 ? total / weeklyCounts[index] : 0
+    );
+    setWeeklyPattern(weeklyAvg);
+    
+    // Store totals for display
+    setWeeklyTotals(weeklyTotals);
 
-      // Create realistic monthly pattern
-      const monthlyMultipliers = [0.8, 0.9, 1.2, 1.1, 1.0, 1.3, 1.2, 1.1, 1.0, 1.3, 1.1, 0.9];
-      const monthlyTotalMultiplier = monthlyMultipliers.reduce((sum, m) => sum + m, 0);
-      
-      const monthlyAvg = monthlyMultipliers.map(multiplier => 
-        (totalSales * multiplier) / (monthlyTotalMultiplier * data.length)
-      );
-      setMonthlyPattern(monthlyAvg);
-    } else {
-      setWeeklyPattern(Array(7).fill(0));
-      setMonthlyPattern(Array(12).fill(0));
-    }
+    // Calculate actual sales by month
+    const monthlyTotals = Array(12).fill(0);
+    const monthlyCounts = Array(12).fill(0);
+    
+    data.forEach(sale => {
+      const month = new Date(sale.date).getMonth();
+      monthlyTotals[month] += sale.quantity;
+      monthlyCounts[month]++;
+    });
+    
+    const monthlyAvg = monthlyTotals.map((total, index) => 
+      monthlyCounts[index] > 0 ? total / monthlyCounts[index] : 0
+    );
+    setMonthlyPattern(monthlyAvg);
+    
+    // Store totals for display
+    setMonthlyTotals(monthlyTotals);
   };
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -123,7 +134,10 @@ export default function SalesPatternChart({ productId, productName }: Props) {
                   <span className={`${isWeekend ? 'text-orange-400' : 'text-gray-400'} font-medium`}>
                     {dayNames[index]}
                   </span>
-                  <span className="text-white font-medium">{avg.toFixed(1)} units</span>
+                  <div className="text-right">
+                    <span className="text-white font-bold">{weeklyTotals[index] || 0}</span>
+                    <span className="text-gray-400 text-xs ml-1">({avg.toFixed(1)} avg)</span>
+                  </div>
                 </div>
                 <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
                   <div
@@ -164,7 +178,10 @@ export default function SalesPatternChart({ productId, productName }: Props) {
                   }`}>
                     {monthNames[index]}
                   </span>
-                  <span className="text-white font-medium">{avg.toFixed(1)} units</span>
+                  <div className="text-right">
+                    <span className="text-white font-bold">{monthlyTotals[index] || 0}</span>
+                    <span className="text-gray-400 text-xs ml-1">({avg.toFixed(1)} avg)</span>
+                  </div>
                 </div>
                 <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
                   <div
