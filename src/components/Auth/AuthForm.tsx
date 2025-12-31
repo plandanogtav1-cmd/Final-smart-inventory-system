@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Lock, Mail, AlertCircle, Zap } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Store } from 'lucide-react';
 
 export default function AuthForm() {
   const [email, setEmail] = useState('');
@@ -28,8 +28,8 @@ export default function AuthForm() {
       <div className="max-w-md w-full">
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
           <div className="flex items-center justify-center mb-8">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-xl">
-              <Zap className="w-8 h-8 text-white" />
+            <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 p-4 rounded-2xl shadow-xl">
+              <Store className="w-8 h-8 text-white" />
             </div>
           </div>
 

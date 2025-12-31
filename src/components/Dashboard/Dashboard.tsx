@@ -90,6 +90,11 @@ export default function Dashboard() {
         ? ((thisMonthSales - previousMonthSales) / previousMonthSales) * 100
         : 0;
 
+      // Calculate inventory turnover
+      const totalCostValue = products.reduce((sum, p) => sum + (p.current_stock * (p.cost_price || p.unit_price * 0.7)), 0);
+      const totalSalesValue = (salesResult.data || []).reduce((sum, s) => sum + s.total_amount, 0);
+      const inventoryTurnover = totalCostValue > 0 ? (totalSalesValue * 0.7) / totalCostValue : 0;
+
       setStats({
         totalProducts: products.length,
         totalValue,
@@ -98,7 +103,7 @@ export default function Dashboard() {
         totalCustomers: customersResult.count || 0,
         activeAlerts: alertsResult.count || 0,
         salesGrowth,
-        inventoryTurnover: 0,
+        inventoryTurnover,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -164,9 +169,9 @@ export default function Dashboard() {
         />
         <StatCard
           title="Stock Turnover"
-          value="N/A"
+          value={stats.inventoryTurnover.toFixed(1)}
           icon={Activity}
-          trend={null}
+          trend={stats.inventoryTurnover > 2 ? 'up' : stats.inventoryTurnover < 1 ? 'down' : null}
           color="teal"
         />
       </div>
