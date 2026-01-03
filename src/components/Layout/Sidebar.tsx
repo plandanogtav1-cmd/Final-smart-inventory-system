@@ -10,7 +10,7 @@ import {
   Settings,
   LogOut,
   CreditCard,
-  Store
+  Brain
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -39,7 +39,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
       <div className="p-6 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 p-2.5 rounded-xl shadow-lg">
-            <Store className="w-6 h-6 text-white" />
+            <Brain className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-white font-bold text-lg">Inventra</h1>

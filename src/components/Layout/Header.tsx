@@ -11,6 +11,16 @@ interface SearchResult {
   details?: string;
 }
 
+interface DeliveryNotification {
+  id: string;
+  message: string;
+  type: 'delivery';
+  days_remaining: number;
+  purchase_order_id: string;
+  supplier_name: string;
+  created_at: string;
+}
+
 interface Alert {
   id: string;
   message: string;
@@ -32,6 +42,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [deliveryNotifications, setDeliveryNotifications] = useState<DeliveryNotification[]>([]);
   const [syncing, setSyncing] = useState(false);
 
   const handleManualSync = async () => {
@@ -52,6 +63,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   useEffect(() => {
     loadUnreadAlerts();
     loadAlerts();
+    loadDeliveryNotifications();
 
     const subscription = supabase
       .channel('alerts_changes')
@@ -60,6 +72,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
         () => {
           loadUnreadAlerts();
           loadAlerts();
+        }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'purchase_orders' },
+        () => {
+          loadDeliveryNotifications();
         }
       )
       .subscribe();
@@ -80,12 +98,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
   }, [searchTerm]);
 
   const loadUnreadAlerts = async () => {
-    const { count } = await supabase
+    const { count: alertCount } = await supabase
       .from('alerts')
       .select('*', { count: 'exact', head: true })
       .eq('is_read', false);
 
-    setUnreadAlerts(count || 0);
+    const deliveryCount = deliveryNotifications.length;
+    setUnreadAlerts((alertCount || 0) + deliveryCount);
   };
 
   const loadAlerts = async () => {
@@ -99,6 +118,54 @@ export default function Header({ onMenuClick }: HeaderProps) {
     if (data) {
       setAlerts(data);
     }
+  };
+
+  const loadDeliveryNotifications = async () => {
+    const { data: orders } = await supabase
+      .from('purchase_orders')
+      .select(`
+        id,
+        expected_delivery_date,
+        status,
+        suppliers!inner(name)
+      `)
+      .in('status', ['pending', 'confirmed', 'shipped'])
+      .not('expected_delivery_date', 'is', null);
+
+    if (!orders) return;
+
+    const notifications: DeliveryNotification[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    orders.forEach(order => {
+      const deliveryDate = new Date(order.expected_delivery_date);
+      deliveryDate.setHours(0, 0, 0, 0);
+      const daysRemaining = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      let message = '';
+      if (daysRemaining === 0) {
+        message = `📦 Delivery arriving TODAY from ${order.suppliers.name}! Click to mark as received.`;
+      } else if (daysRemaining === 1) {
+        message = `🚚 Delivery arriving TOMORROW from ${order.suppliers.name} (1 day remaining)`;
+      } else if (daysRemaining <= 3 && daysRemaining > 0) {
+        message = `📅 Delivery from ${order.suppliers.name} arriving in ${daysRemaining} days`;
+      }
+
+      if (message && daysRemaining >= 0 && daysRemaining <= 3) {
+        notifications.push({
+          id: `delivery-${order.id}`,
+          message,
+          type: 'delivery',
+          days_remaining: daysRemaining,
+          purchase_order_id: order.id,
+          supplier_name: order.suppliers.name,
+          created_at: new Date().toISOString()
+        });
+      }
+    });
+
+    setDeliveryNotifications(notifications);
   };
 
   const performSearch = async () => {
@@ -287,6 +354,38 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 </div>
                 
                 <div className="max-h-80 overflow-y-auto">
+                  {/* Delivery Notifications */}
+                  {deliveryNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className="p-4 border-b border-gray-700 hover:bg-gray-700 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (notification.days_remaining === 0) {
+                          alert(`Mark delivery from ${notification.supplier_name} as received?`);
+                        }
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="text-white text-sm">{notification.message}</p>
+                          <p className="text-gray-400 text-xs mt-1">
+                            Expected delivery tracking
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            notification.days_remaining === 0 ? 'bg-green-500/20 text-green-400' :
+                            notification.days_remaining === 1 ? 'bg-orange-500/20 text-orange-400' :
+                            'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            {notification.days_remaining === 0 ? 'Today' : `${notification.days_remaining}d`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Regular Alerts */}
                   {alerts.length > 0 ? (
                     alerts.map((alert) => (
                       <div
@@ -319,12 +418,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
                         </div>
                       </div>
                     ))
-                  ) : (
+                  ) : (alerts.length === 0 && deliveryNotifications.length === 0) ? (
                     <div className="p-8 text-center text-gray-400">
                       <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
                       <p>No new notifications</p>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )}

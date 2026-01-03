@@ -16,7 +16,6 @@ const SUGGESTED_QUESTIONS = [
   { icon: TrendingUp, text: 'What are my top 5 best-selling products?', category: 'Sales' },
   { icon: TrendingUp, text: 'How much revenue did I make today?', category: 'Sales' },
   { icon: Package, text: 'What is my total inventory value?', category: 'Inventory' },
-  { icon: AlertTriangle, text: 'Do I need to restock any products?', category: 'Alerts' },
   { icon: TrendingUp, text: 'Who are my top customers by purchase value?', category: 'Customers' },
   { icon: Package, text: 'How many products do I have in each category?', category: 'Inventory' },
   { icon: TrendingUp, text: 'What was my sales performance this month?', category: 'Sales' },
@@ -25,7 +24,6 @@ const SUGGESTED_QUESTIONS = [
   { icon: TrendingUp, text: 'What is my average order value?', category: 'Sales' },
   { icon: Package, text: 'Which suppliers have the highest ratings?', category: 'Suppliers' },
   { icon: TrendingUp, text: 'Show me my weekly sales report', category: 'Sales' },
-  { icon: Package, text: 'What products need immediate restocking?', category: 'Inventory' },
   { icon: TrendingUp, text: 'How many transactions did I have today?', category: 'Sales' },
   { icon: Package, text: 'Find products by name or category', category: 'Search' },
   { icon: TrendingUp, text: 'What will be my sales forecast for next month?', category: 'Forecast' },
@@ -87,6 +85,116 @@ export default function ChatbotView() {
         alert('Failed to clear chat history.');
       }
     }
+  };
+
+  const handleProductSearch = async (searchTerm: string): Promise<string> => {
+    const { data: products } = await supabase
+      .from('products')
+      .select('name, current_stock, category, unit_price, min_stock_threshold')
+      .eq('is_active', true)
+      .ilike('name', `%${searchTerm}%`);
+
+    if (!products || products.length === 0) {
+      // Try category search if no product name match
+      const { data: categoryProducts } = await supabase
+        .from('products')
+        .select('name, current_stock, category, unit_price, min_stock_threshold')
+        .eq('is_active', true)
+        .ilike('category', `%${searchTerm}%`);
+
+      if (!categoryProducts || categoryProducts.length === 0) {
+        const funnyNotFound = [
+          `🕵️ **Detective Mode Activated!** Searched high and low for "${searchTerm}" but it's playing hide and seek! 🙈`,
+          `🔍 **Mission Impossible!** "${searchTerm}" has vanished like a ninja in the night! 🥷`,
+          `🎯 **Plot Twist!** "${searchTerm}" is not in our inventory... yet! Maybe it's on vacation? 🏖️`,
+          `🤖 **Error 404: Product Not Found!** "${searchTerm}" must be in another castle! 🏰`,
+          `🧙‍♂️ **Abracadabra!** I tried magic but "${searchTerm}" is still missing from our shelves! ✨`
+        ];
+        
+        return funnyNotFound[Math.floor(Math.random() * funnyNotFound.length)] +
+               `\n\n💡 **Try searching for:**\n` +
+               `• Motorcycle parts (e.g., "tire", "brake", "engine oil")\n` +
+               `• Categories (e.g., "engine", "brakes", "electrical", "tires")\n` +
+               `• Or ask "show me all products" to browse everything`;
+      }
+
+      // Show category results with humor
+      const categoryIntros = [
+        `🎉 **Jackpot!** Found ${categoryProducts.length} treasures in the "${searchTerm}" kingdom:`,
+        `🚀 **Bingo!** Discovered ${categoryProducts.length} goodies hiding in "${searchTerm}" land:`,
+        `🎯 **Bulls-eye!** Located ${categoryProducts.length} items chilling in the "${searchTerm}" zone:`,
+        `🏆 **Victory!** Uncovered ${categoryProducts.length} products partying in "${searchTerm}" territory:`
+      ];
+      
+      let result = categoryIntros[Math.floor(Math.random() * categoryIntros.length)] + '\n\n';
+      categoryProducts.slice(0, 8).forEach(p => {
+        const status = p.current_stock === 0 ? '❌' : p.current_stock <= p.min_stock_threshold ? '⚠️' : '✅';
+        const stockEmoji = p.current_stock === 0 ? ' 😴' : p.current_stock <= 5 ? ' 😰' : p.current_stock >= 50 ? ' 💪' : '';
+        result += `${status} **${p.name}**: ${p.current_stock} units${stockEmoji} (₱${p.unit_price})\n`;
+      });
+      
+      if (categoryProducts.length > 8) {
+        result += `\n... and ${categoryProducts.length - 8} more items are having a party in this category! 🎊`;
+      }
+      
+      return result;
+    }
+
+    // Show product results with humor
+    const searchIntros = [
+      `🎪 **Ta-da!** Found ${products.length} superstar(s) matching "${searchTerm}":`,
+      `🎭 **The search is over!** ${products.length} product(s) answered the call for "${searchTerm}":`,
+      `🎨 **Masterpiece!** Discovered ${products.length} gem(s) named "${searchTerm}":`,
+      `🎵 **Music to my ears!** ${products.length} product(s) sang back when I called "${searchTerm}":`
+    ];
+    
+    let result = searchIntros[Math.floor(Math.random() * searchIntros.length)] + '\n\n';
+    
+    products.forEach(p => {
+      const status = p.current_stock === 0 ? '❌ OUT OF STOCK' : 
+                    p.current_stock <= p.min_stock_threshold ? '⚠️ LOW STOCK' : 
+                    '✅ IN STOCK';
+      
+      // Fun stock level descriptions
+      let stockDescription = '';
+      if (p.current_stock === 0) {
+        stockDescription = ' 😴 (Taking a nap!)';
+      } else if (p.current_stock <= 5) {
+        stockDescription = ' 😰 (Getting lonely!)';
+      } else if (p.current_stock <= 15) {
+        stockDescription = ' 😊 (Doing okay!)';
+      } else if (p.current_stock >= 50) {
+        stockDescription = ' 💪 (Flexing those numbers!)';
+      } else {
+        stockDescription = ' 😎 (Living the good life!)';
+      }
+      
+      result += `${status}\n`;
+      result += `📦 **${p.name}** (${p.category})\n`;
+      result += `   Stock: ${p.current_stock} units${stockDescription}\n`;
+      result += `   Price: ₱${p.unit_price}\n`;
+      
+      if (p.current_stock <= p.min_stock_threshold && p.current_stock > 0) {
+        const lowStockJokes = [
+          '   🔔 Running low - time for a shopping spree!',
+          '   🛒 Getting thirsty for more stock!',
+          '   📞 This product is calling for backup!',
+          '   🚨 SOS! Send reinforcements!'
+        ];
+        result += lowStockJokes[Math.floor(Math.random() * lowStockJokes.length)] + '\n';
+      } else if (p.current_stock === 0) {
+        const outOfStockJokes = [
+          '   🚨 Completely MIA - launch a rescue mission!',
+          '   🏃‍♂️ This item ran away! Time to bring it back!',
+          '   🎭 Playing invisible - needs a comeback tour!',
+          '   🆘 MAYDAY! Emergency restock needed!'
+        ];
+        result += outOfStockJokes[Math.floor(Math.random() * outOfStockJokes.length)] + '\n';
+      }
+      result += '\n';
+    });
+    
+    return result;
   };
 
   const processQuery = async (query: string): Promise<string> => {
@@ -157,7 +265,81 @@ export default function ChatbotView() {
       return await handleOrderRecommendations();
     }
     
+    // Business queries - MUST come before product search
+    // Category breakdown
+    if (/\bhow many.*products.*categor/.test(processedQuery) ||
+        /\bproducts.*each.*categor/.test(processedQuery) ||
+        /\bcategor.*breakdown/.test(processedQuery)) {
+      return await handleCategoryBreakdown();
+    }
+    
+    // Weekly/Monthly sales reports
+    if (/\bweekly.*sales/.test(processedQuery) ||
+        /\bweek.*sales/.test(processedQuery) ||
+        /\bsales.*week/.test(processedQuery)) {
+      return await handleWeeklySales();
+    }
+    
+    if (/\bmonthly.*sales/.test(processedQuery) ||
+        /\bmonth.*sales/.test(processedQuery) ||
+        /\bsales.*month/.test(processedQuery)) {
+      return await handleMonthlySales();
+    }
+    
+    // Zero stock
+    if (/\b(zero|empty|out)\b.*\b(stock|inventory)\b/.test(processedQuery) ||
+        /\bproducts.*zero.*stock\b/.test(processedQuery) ||
+        /\bwhich.*products.*zero\b/.test(processedQuery)) {
+      return await handleZeroStock();
+    }
+    
+    // Transactions
+    if (/\b(transaction|order)\b.*\b(today|count|how many)\b/.test(processedQuery) ||
+        /\bhow many.*transaction/.test(processedQuery) ||
+        /\btransaction.*today/.test(processedQuery)) {
+      return await handleTodayTransactions();
+    }
+    
+    // Suppliers
+    if (/\b(supplier|vendor|rating)\b/.test(processedQuery) ||
+        /\bsupplier.*rating/.test(processedQuery) ||
+        /\bhighest.*rating/.test(processedQuery) ||
+        /\bwhich.*supplier/.test(processedQuery)) {
+      return await handleSuppliers();
+    }
+    
+    // Alerts
+    if (/\b(alert|notification|warning|problem)\b/.test(processedQuery) ||
+        /\bactive.*alert/.test(processedQuery) ||
+        /\bwhat.*alert/.test(processedQuery)) {
+      return await handleAlerts();
+    }
+    
+    // Product browse
+    if (/\b(find|search|browse|show)\b.*\b(product|item)/.test(processedQuery) ||
+        /\bproduct.*name/.test(processedQuery) ||
+        /\bfind.*categor/.test(processedQuery) ||
+        /\bproducts.*by.*name/.test(processedQuery) ||
+        /\bproducts.*by.*category/.test(processedQuery)) {
+      return await handleProductBrowse();
+    }
+    
     // Enhanced intent detection
+    // Specific product search with fun detection
+    if (/\b(do we have|have|find|search|look for|check|got|stock of|where is|where's|gimme|show me)\b/.test(processedQuery) &&
+        !(/\b(top|best|low|running|category|customer|supplier|alert|sales|revenue|zero stock|transactions|ratings|active alerts|products by|all products|how many|what|which|today|highest|active|weekly|monthly|report|each category|in each)/.test(processedQuery))) {
+      // Extract product name from query
+      const productQuery = processedQuery
+        .replace(/\b(do we have|have|find|search|look for|check|got|stock of|any|some|the|where is|where's|gimme|show me|search for)\b/g, '')
+        .replace(/\?/g, '')
+        .replace(/\bfor\b/g, '') // Remove standalone 'for'
+        .trim();
+      
+      if (productQuery.length > 1) {
+        return await handleProductSearch(productQuery);
+      }
+    }
+    
     // Categories - improved pattern matching
     if ((/\b(categor|group|type)\b/.test(processedQuery) && /\b(products?|items?|how many|count)\b/.test(processedQuery)) ||
         /\bcategor\b/.test(processedQuery) ||
@@ -166,40 +348,6 @@ export default function ChatbotView() {
       return await handleCategoryBreakdown();
     }
     
-    // Transactions - improved pattern matching
-    if ((/\b(transaction|order)\b/.test(processedQuery) && /\b(today|count|how many)\b/.test(processedQuery)) ||
-        /\bhow many.*transaction/.test(processedQuery) ||
-        /\btransaction.*today/.test(processedQuery)) {
-      return await handleTodayTransactions();
-    }
-    
-    // Alerts - improved pattern matching
-    if (/\b(alert|notification|warning|problem|active.*alert)\b/.test(processedQuery) ||
-        /\bactive.*alert/.test(processedQuery) ||
-        /\balert.*active/.test(processedQuery)) {
-      return await handleAlerts();
-    }
-    
-    // Customers - improved pattern matching
-    if (/\b(customer|client|buyer|top customer)\b/.test(processedQuery) ||
-        /\btop.*customer/.test(processedQuery) ||
-        /\bcustomer.*purchase/.test(processedQuery)) {
-      return await handleCustomers();
-    }
-    
-    // Suppliers - improved pattern matching
-    if (/\b(supplier|vendor|rating)\b/.test(processedQuery) ||
-        /\bsupplier.*rating/.test(processedQuery) ||
-        /\bhighest.*rating/.test(processedQuery)) {
-      return await handleSuppliers();
-    }
-    
-    // Product search/browse - improved pattern matching
-    if (/\b(find|search|browse|show)\b.*\b(product|item)/.test(processedQuery) ||
-        /\bproduct.*name/.test(processedQuery) ||
-        /\bfind.*categor/.test(processedQuery)) {
-      return await handleProductBrowse();
-    }
     // Top/Best products
     if (/\b(top|best|highest|most)\b.*\b(products?|items?|selling)\b/.test(processedQuery) ||
         /\b(products?|items?)\b.*\b(top|best|highest|most)\b/.test(processedQuery)) {
@@ -221,31 +369,23 @@ export default function ChatbotView() {
       return await handleTodaySales(); // Default to today
     }
     
-    // Simple shortcuts
-    if (/^(sales|sal|sles)\s+(month|mnth|mo)$/i.test(query.trim())) return await handleMonthlySales();
-    if (/^(sales|sal|sles)\s+(week|wk)$/i.test(query.trim())) return await handleWeeklySales();
-    if (/^(sales|sal|sles)\s+(today|tdy|dy)$/i.test(query.trim())) return await handleTodaySales();
-    
     // Inventory value
     if ((/\b(inventory|stock)\b/.test(processedQuery) && /\b(value|worth|cost|price|total)\b/.test(processedQuery)) ||
         /\binv\s+val\b/.test(processedQuery)) {
       return await handleInventoryValue();
     }
     
-    // Categories
-    if ((/\b(categor|group|type)\b/.test(processedQuery) && /\b(products?|items?|how many|count)\b/.test(processedQuery)) ||
-        /\bcategor\b/.test(processedQuery)) {
-      return await handleCategoryBreakdown();
-    }
-    
     // Customers
-    if (/\b(customer|client|buyer|top customer)\b/.test(processedQuery)) {
+    if (/\b(customer|client|buyer)\b/.test(processedQuery) ||
+        /\btop.*customer/.test(processedQuery) ||
+        /\bcustomer.*purchase/.test(processedQuery) ||
+        /\bwho.*customer/.test(processedQuery)) {
       return await handleCustomers();
     }
     
     // Alerts
     if (/\b(alert|notification|warning|problem)\b/.test(processedQuery)) {
-      return await handleAlerts();
+      // Already handled above
     }
     
     // Average order
@@ -255,35 +395,18 @@ export default function ChatbotView() {
     
     // Suppliers
     if (/\b(supplier|vendor|rating)\b/.test(processedQuery)) {
-      return await handleSuppliers();
+      // Already handled above
     }
     
     // Zero stock
     if ((/\b(zero|empty|out)\b/.test(processedQuery) && /\b(stock|inventory)\b/.test(processedQuery)) ||
         /\bzero\s+stock\b/.test(processedQuery)) {
-      return await handleZeroStock();
+      // Already handled above
     }
     
     // Transactions
     if (/\b(transaction|order)\b/.test(processedQuery) && /\b(today|count|how many)\b/.test(processedQuery)) {
-      return await handleTodayTransactions();
-    }
-    
-    // Forecast queries
-    if (/\b(forecast|predict|future|next month|next week)\b/.test(processedQuery) &&
-        /\b(sales?|revenue|demand)\b/.test(processedQuery)) {
-      return await handleSalesForecast();
-    }
-    
-    if (/\b(order more|should.*order|recommend.*order)\b/.test(processedQuery)) {
-      return await handleOrderRecommendations();
-    }
-    
-    // Simple fallbacks
-    if (/\bstock\b/.test(processedQuery)) {
-      if (/\blow\b/.test(processedQuery)) return await handleLowStock();
-      if (/\bvalue\b/.test(processedQuery)) return await handleInventoryValue();
-      return await handleLowStock();
+      // Already handled above
     }
     
     return "🤖 I didn't understand your question. Try asking:\n\n" +
@@ -309,7 +432,7 @@ export default function ChatbotView() {
     
     if (lowStock.length === 0) {
       const celebrations = [
-        '✅ **Amazing!** All products are well-stocked! You\'re a inventory wizard! 🧙‍♂️✨',
+        '✅ **Amazing!** All products are well-stocked! You\'re a inventory wizard! 🧙♂️✨',
         '🎯 **Perfect!** No low stock alerts - your planning game is strong! 💪🔥',
         '🏆 **Excellent!** Every product is properly stocked! You\'re crushing it! 🚀',
         '⭐ **Fantastic!** Zero low stock issues - that\'s professional management! 👑'
@@ -737,8 +860,8 @@ export default function ChatbotView() {
     });
     
     result += '💡 **Search Tips:**\n';
-    result += '• Ask "Find rice" to search for specific products\n';
-    result += '• Ask "Show me all beverages" for category search\n';
+    result += '• Ask "Find tire" to search for specific products\n';
+    result += '• Ask "Show me all engine parts" for category search\n';
     result += '• Ask "Which products are low on stock?" for alerts';
     
     return result;
@@ -884,7 +1007,6 @@ export default function ChatbotView() {
       return celebrations[Math.floor(Math.random() * celebrations.length)];
     }
 
-    const totalOrderValue = lowStock.reduce((sum, p) => sum + (p.reorder_quantity * (p.unit_price || 0)), 0);
     const criticalCount = lowStock.filter(p => p.current_stock === 0).length;
     
     let intro = '';
