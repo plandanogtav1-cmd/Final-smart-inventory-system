@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>List Gemini Models</title>
+</head>
+<body>
+    <h1>Available Gemini Models</h1>
+    <div id="results">Loading...</div>
+
+    <script>
+        const API_KEY = 'AIzaSyCE3kM0VvkKCFg-HJBCa1yipr3PUEHvCOI';
+
+        async function listModels() {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
+                const data = await response.json();
+                
+                const resultsDiv = document.getElementById('results');
+                
+                if (data.models) {
+                    let html = '<h2>Available Models:</h2>';
+                    data.models.forEach(model => {
+                        if (model.supportedGenerationMethods?.includes('generateContent')) {
+                            html += `<p><strong>${model.name}</strong> - ${model.displayName}</p>`;
+                        }
+                    });
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<p>Error: ' + JSON.stringify(data) + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('results').innerHTML = '<p>Error: ' + error.message + '</p>';
+            }
+        }
+
+        listModels();
+    </script>
+</body>
+</html>

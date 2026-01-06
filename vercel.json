@@ -1,10 +1,10 @@
 {
   "functions": {
     "ai-chat.js": {
-      "runtime": "@vercel/node@20.x"
+      "runtime": "nodejs18.x"
     },
     "send-email.js": {
-      "runtime": "@vercel/node@20.x"
+      "runtime": "nodejs18.x"
     }
   },
   "rewrites": [

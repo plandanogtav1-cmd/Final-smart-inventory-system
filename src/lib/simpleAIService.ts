@@ -91,57 +91,65 @@ Active Alerts: ${alerts.length}`;
   }
 
   /**
-   * Query AI via your existing server
+   * Query AI directly via Gemini API
    */
   static async queryWithAI(userQuery: string, userId: string): Promise<string> {
     try {
-      console.log('🤖 Calling AI via server with query:', userQuery);
+      console.log('🤖 Calling Gemini AI with query:', userQuery);
+      
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Gemini API key not found');
+      }
       
       // Get business context
       const context = await this.getBusinessContext(userId);
       const businessSummary = this.generateBusinessSummary(context);
       
       // Create AI prompt with business context
-      const prompt = `You are an intelligent business assistant for an inventory management system. 
+      const prompt = `Business Assistant for Inventory System.
 
-Current Business Data:
+Data:
 ${businessSummary}
 
-User Question: "${userQuery}"
+Q: "${userQuery}"
 
-Provide helpful, accurate insights based on the business data above. Be conversational, use emojis, and give specific actionable advice. Keep responses concise but informative.`;
+Provide concise, actionable insights with key metrics. Use emojis. Max 3 sentences.`;
 
-      console.log('📝 Prompt created, calling server...');
+      console.log('📝 Calling Gemini API...');
 
-      // Use Vercel API endpoint
-      const response = await fetch('/api/ai-chat', {
+      // Call Gemini API directly
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: prompt,
-          businessData: businessSummary,
-          service: 'gemini' // or 'openai'
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
         })
       });
 
-      console.log('📡 Server Response status:', response.status);
+      console.log('📡 Gemini Response status:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Server Error:', response.status, errorData);
-        throw new Error(`Server error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Gemini Error:', response.status, errorText);
+        throw new Error(`Gemini API error: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log('📊 Server Result:', result);
+      console.log('📊 Gemini Result:', result);
       
-      if (result && result.response) {
-        console.log('✨ AI Response:', result.response);
-        return result.response;
+      if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        const aiResponse = result.candidates[0].content.parts[0].text;
+        console.log('✨ AI Response:', aiResponse);
+        return aiResponse;
       } else {
-        throw new Error('No valid response from server');
+        throw new Error('No valid response from Gemini');
       }
 
     } catch (error) {
@@ -154,6 +162,6 @@ Provide helpful, accurate insights based on the business data above. Be conversa
    * Check if AI is available
    */
   static isAvailable(): boolean {
-    return !!import.meta.env.VITE_GEMINI_API_KEY || !!import.meta.env.VITE_OPENAI_API_KEY;
+    return !!import.meta.env.VITE_GEMINI_API_KEY;
   }
 }
