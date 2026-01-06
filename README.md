@@ -66,13 +66,16 @@ A modern, full-stack inventory management system with real-time analytics, AI-po
 - **Customer Insights** - Purchase history and lifetime value analysis
 - **Scrollable Charts** - Enhanced sales trend visualization
 
-### 5. Intelligent AI Chatbot Assistant
-- **Natural Language Processing** - Understands business queries in plain English
-- **Real Business Data** - Connected to actual inventory, sales, and customer data
-- **Advanced Forecasting** - Provides sales predictions and order recommendations
+### 5. Intelligent AI Chatbot Assistant (🆕 Enhanced with Hugging Face)
+- **Advanced AI Integration** - Powered by Hugging Face models for intelligent responses
+- **Multiple AI Options** - API-based (30k free requests/month) or client-side AI (unlimited)
+- **Natural Language Processing** - Understands complex business queries in plain English
+- **Real Business Data Integration** - Connected to actual inventory, sales, and customer data
+- **Advanced Forecasting** - Provides sales predictions and strategic recommendations
 - **Comprehensive Analytics** - Answers questions about stock, sales, customers, suppliers
-- **Contextual Responses** - Maintains conversation history and context
-- **Bilingual Support** - English language optimized for accuracy
+- **Contextual Conversations** - Maintains conversation history and provides follow-up insights
+- **Fallback System** - Works with or without AI enhancement
+- **Business Intelligence** - Explains trends, patterns, and provides actionable insights
 
 ### 6. Stock Receiving System
 - **POS-style Interface** - Consistent UI design with main POS system
@@ -106,9 +109,11 @@ A modern, full-stack inventory management system with real-time analytics, AI-po
 - **Barcode Scanning** - Camera-based product identification
 
 ### AI & Analytics
+- **Hugging Face Integration** - Advanced AI models for intelligent chatbot responses
+- **Client-Side AI Option** - Transformers.js for unlimited free AI processing
 - **Custom Forecasting Algorithms** - Weighted moving averages
 - **External Data Fusion** - Multi-source data integration
-- **Natural Language Processing** - Chatbot query understanding
+- **Natural Language Processing** - Advanced query understanding with business context
 - **Pattern Recognition** - Sales trend analysis
 - **Confidence Scoring** - Prediction reliability metrics
 
@@ -121,9 +126,9 @@ A modern, full-stack inventory management system with real-time analytics, AI-po
 - **Password:** demo123
 
 ### What to Try
-1. **AI Forecasting** - Generate demand predictions with external data
-2. **POS System** - Process sales with barcode scanning
-3. **AI Chatbot** - Ask questions about inventory and sales
+1. **AI Chatbot** - Ask complex questions like "What insights can you give me about my business?"
+2. **AI Forecasting** - Generate demand predictions with external data
+3. **POS System** - Process sales with barcode scanning
 4. **Automated Restocking** - Create and manage purchase orders
 5. **Analytics Dashboard** - Explore sales trends and insights
 

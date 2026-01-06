@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
+import { SimpleAIService } from '../../lib/simpleAIService';
 import { ExternalDataService } from '../../lib/externalDataService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, Bot, User, Loader, RotateCcw, Lightbulb, TrendingUp, Package, AlertTriangle } from 'lucide-react';
+import { Send, Bot, User, Loader, RotateCcw, Lightbulb, TrendingUp, Package, AlertTriangle, Sparkles, Zap } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -35,11 +36,15 @@ export default function ChatbotView() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentUserMessage, setCurrentUserMessage] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [aiMode, setAiMode] = useState<'enhanced' | 'basic'>('basic');
+  const [isAiAvailable, setIsAiAvailable] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadChatHistory();
+    checkAiAvailability();
   }, [user?.id]);
 
   useEffect(() => {
@@ -48,6 +53,17 @@ export default function ChatbotView() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const checkAiAvailability = () => {
+    const hasAnyAIKey = !!import.meta.env.VITE_GEMINI_API_KEY || !!import.meta.env.VITE_OPENAI_API_KEY;
+    setIsAiAvailable(hasAnyAIKey);
+    
+    if (hasAnyAIKey) {
+      setAiMode('enhanced');
+    } else {
+      setAiMode('basic');
+    }
   };
 
   const loadChatHistory = async () => {
@@ -1040,8 +1056,30 @@ export default function ChatbotView() {
     setLoading(true);
     setShowSuggestions(false);
 
+    // Add user message immediately to chat
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      message: userMessage,
+      response: '',
+      created_at: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, tempMessage]);
+
     try {
-      const response = await processQuery(userMessage);
+      let response: string;
+      
+      if (aiMode === 'enhanced' && isAiAvailable) {
+        // Use AI via server (avoids CORS)
+        try {
+          response = await SimpleAIService.queryWithAI(userMessage, user?.id || '');
+        } catch (error) {
+          console.warn('AI failed, using rule-based fallback:', error);
+          response = await processQuery(userMessage);
+        }
+      } else {
+        // Use existing rule-based system
+        response = await processQuery(userMessage);
+      }
 
       const { data } = await supabase
         .from('chat_history')
@@ -1049,16 +1087,21 @@ export default function ChatbotView() {
           user_id: user?.id,
           message: userMessage,
           response,
-          context_data: {}
+          context_data: { ai_enhanced: aiMode === 'enhanced' }
         }])
         .select()
         .single();
 
       if (data) {
-        setMessages([...messages, data]);
+        // Replace temp message with real one
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempMessage.id ? data : msg
+        ));
       }
     } catch (error) {
       console.error('Error processing chat:', error);
+      // Remove temp message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
     } finally {
       setLoading(false);
     }
@@ -1069,14 +1112,46 @@ export default function ChatbotView() {
     setShowSuggestions(false);
   };
 
+  const toggleAiMode = () => {
+    if (isAiAvailable) {
+      setAiMode(aiMode === 'enhanced' ? 'basic' : 'enhanced');
+    }
+  };
+
   return (
     <div className="p-4 lg:p-8 h-full flex flex-col">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 lg:mb-6 gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">AI Assistant</h1>
-          <p className="text-gray-400">Ask questions about your inventory, sales, and business data</p>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-2xl lg:text-3xl font-bold text-white">AI Assistant</h1>
+            {aiMode === 'enhanced' && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-xs text-white">
+                <Sparkles className="w-3 h-3" />
+                <span>AI Enhanced</span>
+              </div>
+            )}
+          </div>
+          <p className="text-gray-400">
+            {aiMode === 'enhanced' 
+              ? 'Powered by Google Gemini AI with your business data'
+              : 'Ask questions about your inventory, sales, and business data'
+            }
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {isAiAvailable && (
+            <button
+              onClick={toggleAiMode}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all text-sm ${
+                aiMode === 'enhanced'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white'
+                  : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              {aiMode === 'enhanced' ? 'AI Mode' : 'Basic Mode'}
+            </button>
+          )}
           <button
             onClick={() => setShowSuggestions(!showSuggestions)}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all text-sm"
@@ -1095,6 +1170,37 @@ export default function ChatbotView() {
           )}
         </div>
       </div>
+
+      {!isAiAvailable && (
+        <div className="mb-4 p-4 bg-blue-900/20 border border-blue-600/30 rounded-lg">
+          <div className="flex items-center gap-2 text-blue-400 mb-2">
+            <AlertTriangle className="w-5 h-5" />
+            <span className="font-semibold">🚀 Real AI Available (Free!)</span>
+          </div>
+          <p className="text-blue-300 text-sm mb-2">
+            Get intelligent AI responses with Google Gemini (free tier):
+          </p>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-blue-200">🧠</span>
+              <span className="text-blue-200">
+                <strong>Google Gemini:</strong> Get your free API key 
+                <a 
+                  href="https://makersuite.google.com/app/apikey" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-100 underline hover:text-white ml-1"
+                >
+                  here →
+                </a>
+              </span>
+            </div>
+            <div className="text-blue-200 text-xs">
+              Add VITE_GEMINI_API_KEY to your .env file
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 bg-gray-900 border border-gray-800 rounded-xl flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4">
@@ -1158,17 +1264,19 @@ export default function ChatbotView() {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3">
-                    <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-2 rounded-lg flex-shrink-0">
-                      <Bot className="w-5 h-5 text-white" />
+                  {msg.response && (
+                    <div className="flex items-start gap-3">
+                      <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-2 rounded-lg flex-shrink-0">
+                        <Bot className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-lg p-4 border border-gray-700">
+                        <p className="text-gray-200 whitespace-pre-line">{msg.response}</p>
+                        <p className="text-gray-500 text-xs mt-2">
+                          Based on real-time data from your system
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-lg p-4 border border-gray-700">
-                      <p className="text-gray-200 whitespace-pre-line">{msg.response}</p>
-                      <p className="text-gray-500 text-xs mt-2">
-                        Based on real-time data from your system
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               ))}
               {loading && (
@@ -1177,9 +1285,15 @@ export default function ChatbotView() {
                     <Bot className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1 bg-gray-800 rounded-lg p-4">
-                    <div className="flex items-center gap-2">
-                      <Loader className="w-4 h-4 text-gray-400 animate-spin" />
-                      <p className="text-gray-400">Analyzing your data...</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                      <p className="text-gray-400">
+                        {aiMode === 'enhanced' ? 'AI is thinking...' : 'Analyzing your data...'}
+                      </p>
                     </div>
                   </div>
                 </div>

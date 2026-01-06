@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "ai-chat.js": {
+      "runtime": "nodejs18.x"
+    },
+    "send-email.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/ai-chat",
+      "destination": "/ai-chat.js"
+    },
+    {
+      "source": "/api/send-email",
+      "destination": "/send-email.js"
+    }
+  ]
+}
