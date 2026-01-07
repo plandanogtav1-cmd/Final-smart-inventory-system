@@ -806,19 +806,19 @@ export default function POSView() {
       )}
       {/* Virtual Receipt Modal */}
       {showReceipt && receiptData && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white text-black rounded-xl w-full max-w-md max-h-[80vh] overflow-hidden">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white text-black rounded-xl w-full max-w-md h-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {/* Receipt Header */}
-              <div className="text-center border-b-2 border-dashed border-gray-300 pb-4 mb-4">
-                <h2 className="text-xl font-bold">SMART INVENTORY</h2>
-                <p className="text-sm text-gray-600">Motorcycle Parts & Accessories</p>
+              <div className="text-center border-b-2 border-dashed border-gray-300 pb-3 mb-3">
+                <h2 className="text-lg sm:text-xl font-bold">SMART INVENTORY</h2>
+                <p className="text-xs sm:text-sm text-gray-600">Motorcycle Parts & Accessories</p>
                 <p className="text-xs text-gray-500 mt-1">Receipt No: {receiptData.receiptNo}</p>
                 <p className="text-xs text-gray-500">{receiptData.date}</p>
               </div>
 
               {/* Customer Info */}
-              <div className="mb-4 text-sm">
+              <div className="mb-3 text-xs sm:text-sm">
                 <p><strong>Customer:</strong> {receiptData.customerName}</p>
                 {receiptData.customerPhone && (
                   <p><strong>Phone:</strong> {receiptData.customerPhone}</p>
@@ -827,15 +827,15 @@ export default function POSView() {
               </div>
 
               {/* Items */}
-              <div className="border-b border-dashed border-gray-300 pb-4 mb-4">
-                <div className="text-sm font-semibold mb-2">ITEMS:</div>
+              <div className="border-b border-dashed border-gray-300 pb-3 mb-3">
+                <div className="text-xs sm:text-sm font-semibold mb-2">ITEMS:</div>
                 {receiptData.items.map((item: any, index: number) => (
-                  <div key={index} className="flex justify-between text-sm mb-1">
-                    <div className="flex-1">
-                      <div className="font-medium">{item.name}</div>
+                  <div key={index} className="flex justify-between text-xs sm:text-sm mb-1">
+                    <div className="flex-1 pr-2">
+                      <div className="font-medium truncate">{item.name}</div>
                       <div className="text-gray-600">{item.quantity} x ₱{item.unit_price.toFixed(2)}</div>
                     </div>
-                    <div className="font-medium">
+                    <div className="font-medium flex-shrink-0">
                       ₱{(item.quantity * item.unit_price).toFixed(2)}
                     </div>
                   </div>
@@ -843,7 +843,7 @@ export default function POSView() {
               </div>
 
               {/* Totals */}
-              <div className="space-y-1 text-sm mb-4">
+              <div className="space-y-1 text-xs sm:text-sm mb-3">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
                   <span>₱{receiptData.subtotal.toFixed(2)}</span>
@@ -858,37 +858,39 @@ export default function POSView() {
                   <span>Tax (8.75%):</span>
                   <span>₱{receiptData.tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-lg border-t border-gray-300 pt-2">
+                <div className="flex justify-between font-bold text-base sm:text-lg border-t border-gray-300 pt-2">
                   <span>TOTAL:</span>
                   <span>₱{receiptData.total.toFixed(2)}</span>
                 </div>
               </div>
 
               {/* Payment Method */}
-              <div className="text-sm mb-4">
+              <div className="text-xs sm:text-sm mb-3">
                 <p><strong>Payment Method:</strong> {receiptData.paymentMethod.toUpperCase()}</p>
               </div>
 
               {/* Footer */}
-              <div className="text-center text-xs text-gray-500 border-t border-dashed border-gray-300 pt-4">
+              <div className="text-center text-xs text-gray-500 border-t border-dashed border-gray-300 pt-3">
                 <p>Thank you for your business!</p>
                 <p>Please keep this receipt for your records</p>
                 {!isOnline && (
                   <p className="text-orange-600 mt-2">* Transaction will sync when online</p>
                 )}
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 mt-6">
+            {/* Action Buttons - Fixed at bottom */}
+            <div className="flex-shrink-0 p-4 sm:p-6 pt-3 border-t border-gray-200">
+              <div className="flex gap-3">
                 <button
                   onClick={() => window.print()}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all"
+                  className="flex-1 bg-blue-600 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
                 >
                   Print Receipt
                 </button>
                 <button
                   onClick={() => setShowReceipt(false)}
-                  className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-all"
+                  className="flex-1 bg-gray-600 text-white py-2.5 px-4 rounded-lg hover:bg-gray-700 transition-all text-sm font-medium"
                 >
                   Close
                 </button>
