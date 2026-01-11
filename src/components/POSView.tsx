@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Scan, ShoppingCart, Plus, Minus, Trash2, CreditCard, History, X, Search } from 'lucide-react';
+import { Scan, ShoppingCart, Plus, Minus, Trash2, CreditCard, History, X, Search, RotateCcw } from 'lucide-react';
 import BarcodeScanner from './BarcodeScanner';
 import { supabase } from '../lib/supabase';
 import { useOffline } from '../contexts/OfflineContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Product {
   id: string;
@@ -18,12 +19,14 @@ interface CartItem extends Product {
 
 interface Sale {
   id: string;
+  product_id: string;
   product_name: string;
   quantity: number;
   unit_price: number;
   total_amount: number;
   sale_date: string;
   payment_method: string;
+  has_return: boolean;
 }
 
 export default function POSView() {
@@ -45,6 +48,7 @@ export default function POSView() {
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState(0);
   const { isOnline, addPendingAction, getLocalData, setLocalData } = useOffline();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchProducts();
@@ -86,12 +90,21 @@ export default function POSView() {
   const loadRecentSales = async () => {
     const { data: salesData } = await supabase
       .from('sales')
-      .select('id, product_id, quantity, unit_price, total_amount, sale_date, payment_method')
+      .select('id, product_id, quantity, unit_price, total_amount, sale_date, payment_method, customer_id')
       .eq('status', 'completed')
       .order('sale_date', { ascending: false })
       .limit(20);
 
     if (salesData) {
+      // Get returns data to check which sales have been returned
+      const saleIds = salesData.map(s => s.id);
+      const { data: returnsData } = await supabase
+        .from('returns')
+        .select('original_sale_id')
+        .in('original_sale_id', saleIds);
+      
+      const returnedSaleIds = new Set(returnsData?.map(r => r.original_sale_id) || []);
+      
       const productIds = [...new Set(salesData.map(s => s.product_id))];
       const { data: productsData } = await supabase
         .from('products')
@@ -106,12 +119,14 @@ export default function POSView() {
 
         const enrichedSales = salesData.map(sale => ({
           id: sale.id,
+          product_id: sale.product_id,
           product_name: productMap[sale.product_id] || 'Unknown Product',
           quantity: sale.quantity,
           unit_price: sale.unit_price,
           total_amount: sale.total_amount,
           sale_date: sale.sale_date,
-          payment_method: sale.payment_method
+          payment_method: sale.payment_method,
+          has_return: returnedSaleIds.has(sale.id)
         }));
 
         setRecentSales(enrichedSales);
@@ -175,6 +190,46 @@ export default function POSView() {
 
   const getTotal = () => {
     return Math.max(0, getSubtotal() - getDiscountAmount());
+  };
+
+  const processReturn = async (sale: Sale) => {
+    if (!user?.id) {
+      alert('❌ User not authenticated');
+      return;
+    }
+    
+    const returnQuantity = prompt(`Return quantity for ${sale.product_name}\nMax: ${sale.quantity}`);
+    if (!returnQuantity || parseInt(returnQuantity) <= 0 || parseInt(returnQuantity) > sale.quantity) return;
+    
+    const qty = parseInt(returnQuantity);
+    const returnAmount = sale.unit_price * qty;
+    
+    try {
+      const { error } = await supabase
+        .from('returns')
+        .insert([{
+          user_id: user.id,
+          original_sale_id: sale.id,
+          product_id: sale.product_id,
+          customer_id: null,
+          quantity: qty,
+          unit_price: sale.unit_price,
+          total_amount: returnAmount,
+          return_reason: 'Customer return'
+        }]);
+      
+      if (error) {
+        console.error('Return error:', error);
+        alert(`❌ Failed to process return: ${error.message}`);
+      } else {
+        alert(`✅ Return processed! ${qty} units returned, ₱${returnAmount.toFixed(2)} refunded. Stock restored.`);
+        loadRecentSales();
+        fetchProducts();
+      }
+    } catch (error) {
+      console.error('Return error:', error);
+      alert('❌ Error processing return.');
+    }
   };
 
   const processPayment = async () => {
@@ -779,7 +834,22 @@ export default function POSView() {
                     <div key={sale.id} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-white font-medium">{sale.product_name}</h3>
-                        <span className="text-green-400 font-semibold">₱{sale.total_amount.toLocaleString()}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-400 font-semibold">₱{sale.total_amount.toLocaleString()}</span>
+                          {sale.has_return ? (
+                            <span className="px-3 py-1 bg-gray-600 text-gray-300 rounded text-xs">
+                              Returned
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => processReturn(sale)}
+                              className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs flex items-center gap-1"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Return
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm text-gray-400">
                         <div>

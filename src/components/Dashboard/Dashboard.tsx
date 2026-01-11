@@ -24,7 +24,7 @@ interface DashboardStats {
   totalCustomers: number;
   activeAlerts: number;
   salesGrowth: number;
-  inventoryTurnover: number;
+  weeklyRevenue: number;
 }
 
 export default function Dashboard() {
@@ -36,7 +36,7 @@ export default function Dashboard() {
     totalCustomers: 0,
     activeAlerts: 0,
     salesGrowth: 0,
-    inventoryTurnover: 0,
+    weeklyRevenue: 0,
   });
 
   useEffect(() => {
@@ -72,38 +72,49 @@ export default function Dashboard() {
         .filter(s => s.created_at.startsWith(today))
         .reduce((sum, s) => sum + s.total_amount, 0);
 
-      const lastMonth = new Date();
-      lastMonth.setMonth(lastMonth.getMonth() - 1);
-      const lastMonthStr = lastMonth.toISOString().split('T')[0];
+      // Subtract today's returns from today's sales
+      const { data: todayReturns } = await supabase
+        .from('returns')
+        .select('total_amount')
+        .gte('created_at', today);
+      
+      const todayReturnAmount = (todayReturns || []).reduce((sum, r) => sum + r.total_amount, 0);
+      const netTodaySales = todaySales - todayReturnAmount;
 
-      const thisMonthSales = (salesResult.data || [])
-        .filter(s => s.created_at >= lastMonthStr)
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      const lastWeekStr = lastWeek.toISOString().split('T')[0];
+
+      const thisWeekSales = (salesResult.data || [])
+        .filter(s => s.created_at >= lastWeekStr)
         .reduce((sum, s) => sum + s.total_amount, 0);
 
-      const previousMonthStart = new Date(lastMonth);
-      previousMonthStart.setMonth(previousMonthStart.getMonth() - 1);
-      const previousMonthSales = (salesResult.data || [])
-        .filter(s => s.created_at >= previousMonthStart.toISOString() && s.created_at < lastMonthStr)
+      const previousWeekStart = new Date(lastWeek);
+      previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+      const previousWeekSales = (salesResult.data || [])
+        .filter(s => s.created_at >= previousWeekStart.toISOString() && s.created_at < lastWeekStr)
         .reduce((sum, s) => sum + s.total_amount, 0);
 
-      const salesGrowth = previousMonthSales > 0
-        ? ((thisMonthSales - previousMonthSales) / previousMonthSales) * 100
+      const salesGrowth = previousWeekSales > 0
+        ? ((thisWeekSales - previousWeekSales) / previousWeekSales) * 100
         : 0;
 
-      // Calculate inventory turnover
-      const totalCostValue = products.reduce((sum, p) => sum + (p.current_stock * (p.cost_price || p.unit_price * 0.7)), 0);
-      const totalSalesValue = (salesResult.data || []).reduce((sum, s) => sum + s.total_amount, 0);
-      const inventoryTurnover = totalCostValue > 0 ? (totalSalesValue * 0.7) / totalCostValue : 0;
+      // Calculate weekly revenue (last 7 days)
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weeklyRevenue = (salesResult.data || [])
+        .filter(s => s.created_at >= weekAgo.toISOString())
+        .reduce((sum, s) => sum + s.total_amount, 0);
 
       setStats({
         totalProducts: products.length,
         totalValue,
         lowStockCount,
-        todaySales,
+        todaySales: Math.max(0, netTodaySales),
         totalCustomers: customersResult.count || 0,
         activeAlerts: alertsResult.count || 0,
         salesGrowth,
-        inventoryTurnover,
+        weeklyRevenue,
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -140,10 +151,10 @@ export default function Dashboard() {
           color="red"
         />
         <StatCard
-          title="Today's Sales"
+          title="Today's Net Sales"
           value={`₱${stats.todaySales.toLocaleString()}`}
           icon={ShoppingCart}
-          trend={stats.salesGrowth > 0 ? 'up' : stats.salesGrowth < 0 ? 'down' : null}
+          trend={null}
           color="purple"
         />
         <StatCard
@@ -168,10 +179,10 @@ export default function Dashboard() {
           color={stats.salesGrowth >= 0 ? 'green' : 'red'}
         />
         <StatCard
-          title="Stock Turnover"
-          value={stats.inventoryTurnover.toFixed(1)}
+          title="Weekly Revenue"
+          value={`₱${stats.weeklyRevenue.toLocaleString()}`}
           icon={Activity}
-          trend={stats.inventoryTurnover > 2 ? 'up' : stats.inventoryTurnover < 1 ? 'down' : null}
+          trend={stats.salesGrowth >= 0 ? 'up' : 'down'}
           color="teal"
         />
       </div>

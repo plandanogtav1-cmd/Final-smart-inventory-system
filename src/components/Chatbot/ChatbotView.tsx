@@ -542,12 +542,24 @@ export default function ChatbotView() {
       .eq('status', 'completed')
       .gte('created_at', today);
 
-    const total = (data || []).reduce((sum, s) => sum + s.total_amount, 0);
-    const units = (data || []).reduce((sum, s) => sum + s.quantity, 0);
+    // Get today's returns to subtract from sales
+    const { data: returnsData } = await supabase
+      .from('returns')
+      .select('total_amount, quantity')
+      .gte('created_at', today);
+
+    const grossTotal = (data || []).reduce((sum, s) => sum + s.total_amount, 0);
+    const grossUnits = (data || []).reduce((sum, s) => sum + s.quantity, 0);
     const transactions = data?.length || 0;
     
-    if (total === 0) {
-      return '🌱 **Today\'s a fresh start!** No sales yet, but every empire starts with the first sale! 🚀\n\n💪 Keep hustling - your breakthrough moment is coming!';
+    const returnTotal = (returnsData || []).reduce((sum, r) => sum + r.total_amount, 0);
+    const returnUnits = (returnsData || []).reduce((sum, r) => sum + r.quantity, 0);
+    
+    const netTotal = Math.max(0, grossTotal - returnTotal);
+    const netUnits = Math.max(0, grossUnits - returnUnits);
+    
+    if (netTotal === 0) {
+      return '🌱 **Today\'s a fresh start!** No net sales yet, but every empire starts with the first sale! 🚀\n\n💪 Keep hustling - your breakthrough moment is coming!';
     }
     
     const encouragements = [
@@ -561,12 +573,17 @@ export default function ChatbotView() {
     const intro = encouragements[Math.floor(Math.random() * encouragements.length)];
     
     let performance = '';
-    if (total > 50000) performance = '\n\n🔥 **INCREDIBLE!** You\'re absolutely crushing it today! 💪';
-    else if (total > 20000) performance = '\n\n🎉 **AWESOME!** That\'s some solid business right there! 😎';
-    else if (total > 10000) performance = '\n\n🚀 **GREAT JOB!** You\'re building momentum! 💪';
+    if (netTotal > 50000) performance = '\n\n🔥 **INCREDIBLE!** You\'re absolutely crushing it today! 💪';
+    else if (netTotal > 20000) performance = '\n\n🎉 **AWESOME!** That\'s some solid business right there! 😎';
+    else if (netTotal > 10000) performance = '\n\n🚀 **GREAT JOB!** You\'re building momentum! 💪';
     else performance = '\n\n🌱 **NICE START!** Every sale counts towards your success! ✨';
     
-    return `${intro}\n\n💰 Revenue: ₱${total.toLocaleString()}\n📦 Units Sold: ${units}\n🛒 Transactions: ${transactions}${performance}`;
+    let returnInfo = '';
+    if (returnTotal > 0) {
+      returnInfo = `\n\n📋 **Sales Breakdown:**\n• Gross Sales: ₱${grossTotal.toLocaleString()}\n• Returns: ₱${returnTotal.toLocaleString()}\n• Net Sales: ₱${netTotal.toLocaleString()}`;
+    }
+    
+    return `${intro}\n\n💰 Revenue: ₱${netTotal.toLocaleString()}\n📦 Units Sold: ${netUnits}\n🛒 Transactions: ${transactions}${returnInfo}${performance}`;
   };
 
   const handleInventoryValue = async (): Promise<string> => {
@@ -1254,46 +1271,68 @@ export default function ChatbotView() {
           ) : (
             <>
               {messages.map((msg) => (
-                <div key={msg.id} className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-blue-600 p-2 rounded-lg flex-shrink-0">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1 bg-gray-800 rounded-lg p-4">
-                      <p className="text-white">{msg.message}</p>
+                <div key={msg.id} className="space-y-3">
+                  {/* User Message */}
+                  <div className="flex justify-end">
+                    <div className="max-w-[80%] lg:max-w-[70%]">
+                      <div className="bg-blue-600 text-white rounded-2xl rounded-br-md px-4 py-3 shadow-lg">
+                        <p className="text-sm lg:text-base leading-relaxed">{msg.message}</p>
+                      </div>
+                      <div className="flex items-center justify-end gap-2 mt-1 px-2">
+                        <User className="w-3 h-3 text-gray-500" />
+                        <span className="text-xs text-gray-500">You</span>
+                      </div>
                     </div>
                   </div>
 
+                  {/* AI Response */}
                   {msg.response && (
-                    <div className="flex items-start gap-3">
-                      <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-2 rounded-lg flex-shrink-0">
-                        <Bot className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 bg-gradient-to-br from-gray-800 to-gray-800/50 rounded-lg p-4 border border-gray-700">
-                        <p className="text-gray-200 whitespace-pre-line">{msg.response}</p>
-                        <p className="text-gray-500 text-xs mt-2">
-                          Based on real-time data from your system
-                        </p>
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] lg:max-w-[70%]">
+                        <div className="bg-gray-800 border border-gray-700 text-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-lg">
+                          <div className="prose prose-sm lg:prose-base prose-invert max-w-none">
+                            <div className="whitespace-pre-line text-sm lg:text-base leading-relaxed">
+                              {msg.response}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 px-2">
+                          <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-1 rounded-full">
+                            <Bot className="w-3 h-3 text-white" />
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {aiMode === 'enhanced' ? 'AI Assistant' : 'Smart Assistant'}
+                          </span>
+                          <span className="text-xs text-gray-600">•</span>
+                          <span className="text-xs text-gray-500">Real-time data</span>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
               ))}
               {loading && (
-                <div className="flex items-start gap-3">
-                  <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-2 rounded-lg flex-shrink-0">
-                    <Bot className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1 bg-gray-800 rounded-lg p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="flex justify-start">
+                  <div className="max-w-[80%] lg:max-w-[70%]">
+                    <div className="bg-gray-800 border border-gray-700 rounded-2xl rounded-bl-md px-4 py-3 shadow-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                          {aiMode === 'enhanced' ? 'AI is thinking...' : 'Analyzing your data...'}
+                        </p>
                       </div>
-                      <p className="text-gray-400">
-                        {aiMode === 'enhanced' ? 'AI is thinking...' : 'Analyzing your data...'}
-                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 px-2">
+                      <div className="bg-gradient-to-br from-purple-600 to-blue-600 p-1 rounded-full">
+                        <Bot className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {aiMode === 'enhanced' ? 'AI Assistant' : 'Smart Assistant'}
+                      </span>
                     </div>
                   </div>
                 </div>

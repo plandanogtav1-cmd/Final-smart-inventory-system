@@ -7,6 +7,7 @@ interface BusinessContext {
   customers: any[];
   suppliers: any[];
   alerts: any[];
+  returns?: any[];
 }
 
 export class SimpleAIService {
@@ -15,12 +16,13 @@ export class SimpleAIService {
    */
   private static async getBusinessContext(userId: string): Promise<BusinessContext> {
     try {
-      const [products, sales, customers, suppliers, alerts] = await Promise.all([
+      const [products, sales, customers, suppliers, alerts, returns] = await Promise.all([
         supabase.from('products').select('*').eq('is_active', true).limit(50),
         supabase.from('sales').select('*').eq('status', 'completed').order('created_at', { ascending: false }).limit(100),
         supabase.from('customers').select('*').order('total_purchases', { ascending: false }).limit(20),
         supabase.from('suppliers').select('*').eq('is_active', true),
-        supabase.from('alerts').select('*').eq('is_resolved', false).limit(10)
+        supabase.from('alerts').select('*').eq('is_resolved', false).limit(10),
+        supabase.from('returns').select('*').order('created_at', { ascending: false }).limit(50)
       ]);
 
       return {
@@ -28,11 +30,12 @@ export class SimpleAIService {
         sales: sales.data || [],
         customers: customers.data || [],
         suppliers: suppliers.data || [],
-        alerts: alerts.data || []
+        alerts: alerts.data || [],
+        returns: returns.data || []
       };
     } catch (error) {
       console.error('Error fetching business context:', error);
-      return { products: [], sales: [], customers: [], suppliers: [], alerts: [] };
+      return { products: [], sales: [], customers: [], suppliers: [], alerts: [], returns: [] };
     }
   }
 
@@ -56,7 +59,16 @@ export class SimpleAIService {
       const today = new Date().toDateString();
       return saleDate === today;
     });
-    const todayRevenue = todaySales.reduce((sum, s) => sum + s.total_amount, 0);
+    const todayGrossRevenue = todaySales.reduce((sum, s) => sum + s.total_amount, 0);
+    
+    // Get today's returns to calculate net revenue
+    const todayReturns = context.returns?.filter(r => {
+      const returnDate = new Date(r.created_at).toDateString();
+      const today = new Date().toDateString();
+      return returnDate === today;
+    }) || [];
+    const todayReturnAmount = todayReturns.reduce((sum, r) => sum + r.total_amount, 0);
+    const todayRevenue = Math.max(0, todayGrossRevenue - todayReturnAmount);
     
     // Top products
     const productSales = sales.reduce((acc, sale) => {

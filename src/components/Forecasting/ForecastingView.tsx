@@ -26,7 +26,7 @@ export default function ForecastingView() {
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedForecast, setSelectedForecast] = useState<Forecast | null>(null);
-  const [forecastPeriod, setForecastPeriod] = useState<15 | 30 | 60>(30);
+  const [forecastPeriod, setForecastPeriod] = useState<30>(30);
   const [businessIntelligence, setBusinessIntelligence] = useState({
     projectedRevenue: 0,
     growthTrend: 0,
@@ -564,18 +564,11 @@ export default function ForecastingView() {
           <p className="text-gray-400">AI-powered demand predictions and inventory recommendations</p>
         </div>
         <div className="flex items-center gap-4">
-          {/* Forecast Period Selection */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-300 font-medium">Forecast Period:</label>
-            <select
-              value={forecastPeriod}
-              onChange={(e) => setForecastPeriod(Number(e.target.value) as 15 | 30 | 60)}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value={15}>15 Days</option>
-              <option value={30}>1 Month</option>
-              <option value={60}>2 Months</option>
-            </select>
+            <span className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
+              1 Month
+            </span>
           </div>
           
           <button

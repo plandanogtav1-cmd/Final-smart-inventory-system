@@ -1,3 +1,137 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Light Theme Overrides - Enhanced Professional Colors */
+.light {
+  /* Main backgrounds - Clean whites and soft grays */
+  --tw-bg-gray-950: 255 255 255; /* Pure white */
+  --tw-bg-gray-900: 248 250 252; /* Slate-50 - Very light blue-gray */
+  --tw-bg-gray-800: 241 245 249; /* Slate-100 - Light blue-gray */
+  --tw-bg-gray-700: 226 232 240; /* Slate-200 - Soft gray */
+  --tw-bg-gray-600: 203 213 225; /* Slate-300 - Medium gray */
+  
+  /* Text colors - Professional dark tones */
+  --tw-text-white: 15 23 42; /* Slate-900 - Deep professional blue-gray */
+  --tw-text-gray-400: 71 85 105; /* Slate-600 - Medium text */
+  --tw-text-gray-300: 51 65 85; /* Slate-700 - Darker text */
+  --tw-text-gray-200: 30 41 59; /* Slate-800 - Very dark text */
+  --tw-text-gray-500: 100 116 139; /* Slate-500 - Muted text */
+  --tw-text-gray-600: 71 85 105; /* Slate-600 - Secondary text */
+  
+  /* Border colors - Subtle and clean */
+  --tw-border-gray-800: 226 232 240; /* Slate-200 - Light borders */
+  --tw-border-gray-700: 203 213 225; /* Slate-300 - Medium borders */
+  --tw-border-gray-600: 148 163 184; /* Slate-400 - Darker borders */
+}
+
+/* Apply enhanced light theme colors */
+.light body {
+  background-color: rgb(248 250 252); /* Soft background instead of pure white */
+  color: rgb(15 23 42);
+}
+
+/* Background colors - Professional light palette */
+.light .bg-gray-950 { background-color: rgb(255 255 255); } /* Cards - Pure white */
+.light .bg-gray-900 { background-color: rgb(248 250 252); } /* Main background */
+.light .bg-gray-800 { background-color: rgb(241 245 249); } /* Secondary elements */
+.light .bg-gray-700 { background-color: rgb(226 232 240); } /* Hover states */
+.light .bg-gray-600 { background-color: rgb(203 213 225); } /* Pressed states */
+
+/* Text colors - Enhanced readability */
+.light .text-white { color: rgb(15 23 42); } /* Primary text - Deep blue-gray */
+.light .text-gray-400 { color: rgb(71 85 105); } /* Secondary text */
+.light .text-gray-300 { color: rgb(51 65 85); } /* Tertiary text */
+.light .text-gray-200 { color: rgb(30 41 59); } /* Strong text */
+.light .text-gray-500 { color: rgb(100 116 139); } /* Muted text */
+.light .text-gray-600 { color: rgb(71 85 105); } /* Labels */
+
+/* Border colors - Clean separation */
+.light .border-gray-800 { border-color: rgb(226 232 240); }
+.light .border-gray-700 { border-color: rgb(203 213 225); }
+.light .border-gray-600 { border-color: rgb(148 163 184); }
+
+/* Interactive states - Smooth transitions */
+.light .hover\:bg-gray-700:hover { background-color: rgb(226 232 240); }
+.light .hover\:bg-gray-600:hover { background-color: rgb(203 213 225); }
+.light .hover\:border-gray-700:hover { border-color: rgb(203 213 225); }
+.light .hover\:border-gray-600:hover { border-color: rgb(148 163 184); }
+.light .hover\:text-blue-300:hover { color: rgb(37 99 235); } /* Blue accent on hover */
+
+/* Focus states - Accessible blue accents */
+.light .focus\:border-blue-500:focus { border-color: rgb(59 130 246); }
+.light .focus\:ring-blue-500\/20:focus { --tw-ring-color: rgb(59 130 246 / 0.2); }
+
+/* Form elements - Clean and professional */
+.light .placeholder-gray-500::placeholder { color: rgb(100 116 139); }
+.light input[type="text"], .light input[type="email"], .light textarea {
+  background-color: rgb(255 255 255);
+  border-color: rgb(203 213 225);
+  color: rgb(15 23 42);
+}
+.light input[type="text"]:focus, .light input[type="email"]:focus, .light textarea:focus {
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+/* Disabled states */
+.light .cursor-not-allowed { 
+  color: rgb(148 163 184); 
+  background-color: rgb(248 250 252);
+}
+
+/* Navigation - Clean sidebar */
+.light nav { 
+  background-color: rgb(255 255 255); 
+  border-color: rgb(226 232 240);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+.light nav a { 
+  color: rgb(71 85 105); 
+  transition: all 0.2s ease;
+}
+.light nav a:hover { 
+  background-color: rgb(248 250 252); 
+  color: rgb(15 23 42);
+}
+.light nav a.bg-blue-600 { 
+  background-color: rgb(37 99 235); 
+  color: rgb(255 255 255);
+}
+
+/* Cards and containers - Elevated design */
+.light .shadow-lg { 
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+}
+.light .shadow-blue-600\/30 { 
+  box-shadow: 0 10px 15px -3px rgb(37 99 235 / 0.15);
+}
+
+/* Status indicators - Enhanced visibility */
+.light .text-green-400 { color: rgb(34 197 94); } /* Success green */
+.light .text-red-400 { color: rgb(239 68 68); } /* Error red */
+.light .text-yellow-400 { color: rgb(245 158 11); } /* Warning amber */
+.light .text-blue-400 { color: rgb(59 130 246); } /* Info blue */
+
+/* Gradient backgrounds - Subtle and professional */
+.light .bg-gradient-to-r.from-blue-600.to-purple-600 {
+  background: linear-gradient(to right, rgb(37 99 235), rgb(147 51 234));
+}
+.light .bg-gradient-to-br.from-blue-600.to-purple-600 {
+  background: linear-gradient(to bottom right, rgb(37 99 235), rgb(147 51 234));
+}
+
+/* Alert and notification colors */
+.light .bg-blue-900\/20 { background-color: rgb(37 99 235 / 0.1); }
+.light .border-blue-600\/30 { border-color: rgb(37 99 235 / 0.3); }
+.light .text-blue-400 { color: rgb(37 99 235); }
+.light .text-blue-300 { color: rgb(59 130 246); }
+
+/* Chat bubbles - Modern messaging style */
+.light .bg-blue-600 { background-color: rgb(37 99 235); } /* User messages stay blue */
+.light .rounded-2xl.rounded-br-md { box-shadow: 0 2px 8px rgb(0 0 0 / 0.1); }
+.light .rounded-2xl.rounded-bl-md { 
+  background-color: rgb(255 255 255);
+  border: 1px solid rgb(226 232 240);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.05);
+}

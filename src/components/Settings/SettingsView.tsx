@@ -1,8 +1,22 @@
-import { Settings, User, Database, Bell } from 'lucide-react';
+import { Settings, User, Database, Bell, Palette } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useState, useEffect } from 'react';
 
 export default function SettingsView() {
   const { user } = useAuth();
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.classList.toggle('light', savedTheme === 'light');
+  }, []);
+
+  const toggleTheme = (newTheme: 'dark' | 'light') => {
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('light', newTheme === 'light');
+  };
 
   return (
     <div className="p-8 space-y-6">
@@ -77,7 +91,43 @@ export default function SettingsView() {
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-purple-600/10 p-2 rounded-lg">
-              <Database className="w-5 h-5 text-purple-400" />
+              <Palette className="w-5 h-5 text-purple-400" />
+            </div>
+            <h3 className="text-white text-lg font-semibold">Appearance</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-3">Theme</label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => toggleTheme('dark')}
+                  className={`flex-1 p-3 rounded-lg border transition-all ${
+                    theme === 'dark'
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                  }`}
+                >
+                  🌙 Dark Mode
+                </button>
+                <button
+                  onClick={() => toggleTheme('light')}
+                  className={`flex-1 p-3 rounded-lg border transition-all ${
+                    theme === 'light'
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'
+                  }`}
+                >
+                  ☀️ Light Mode
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-green-600/10 p-2 rounded-lg">
+              <Database className="w-5 h-5 text-green-400" />
             </div>
             <h3 className="text-white text-lg font-semibold">Database Connection</h3>
           </div>

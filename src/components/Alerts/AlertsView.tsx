@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 
 interface Alert {
   id: string;
@@ -63,6 +63,26 @@ export default function AlertsView() {
     loadAlerts();
   };
 
+  const deleteAlert = async (id: string) => {
+    if (confirm('Are you sure you want to permanently delete this alert?')) {
+      await supabase
+        .from('alerts')
+        .delete()
+        .eq('id', id);
+      loadAlerts();
+    }
+  };
+
+  const clearAllResolved = async () => {
+    if (confirm('Are you sure you want to permanently delete ALL resolved alerts? This cannot be undone.')) {
+      await supabase
+        .from('alerts')
+        .delete()
+        .eq('is_resolved', true);
+      loadAlerts();
+    }
+  };
+
   const getSeverityConfig = (severity: string) => {
     switch (severity) {
       case 'critical':
@@ -114,6 +134,15 @@ export default function AlertsView() {
           >
             Resolved
           </button>
+          {filter === 'resolved' && alerts.length > 0 && (
+            <button
+              onClick={clearAllResolved}
+              className="px-3 lg:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all text-sm flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Clear All</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -148,13 +177,21 @@ export default function AlertsView() {
                           </span>
                         </div>
                       </div>
-                      {!alert.is_resolved && (
+                      {!alert.is_resolved ? (
                         <button
                           onClick={() => resolveAlert(alert.id)}
                           className="px-3 lg:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all text-sm flex items-center gap-2 flex-shrink-0"
                         >
                           <CheckCircle className="w-4 h-4" />
                           <span className="hidden sm:inline">Resolve</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => deleteAlert(alert.id)}
+                          className="px-3 lg:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all text-sm flex items-center gap-2 flex-shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="hidden sm:inline">Clear</span>
                         </button>
                       )}
                     </div>

@@ -32,7 +32,7 @@ export default function StatCard({ title, value, icon: Icon, trend, color }: Sta
               ) : (
                 <TrendingDown className="w-4 h-4" />
               )}
-              <span className="text-xs font-medium">vs last month</span>
+              <span className="text-xs font-medium">vs last week</span>
             </div>
           )}
         </div>
